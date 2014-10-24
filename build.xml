@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ====================================================================== 
+     5/07/2014 10:30:48 PM                                                        
+
+     XProc-Z    
+     An XML transforming web proxy, by Conal Tuohy                                                                
+     ====================================================================== -->
+<project name="Retailer" default="war">
+
+	<property file="ant/build.properties"/>
+	<description>XProc-Z is an XML processing web proxy.</description>
+
+	<path id="classpath">
+		<fileset dir="lib" includes="*.jar"/>
+	</path>
+
+	<target name="calabash">
+		<echo>Installing XML Calabash</echo>
+		<mkdir dir="calabash"/>
+		<mkdir dir="lib"/>
+		<get src="http://xmlcalabash.com/download/calabash-1.0.21-95.zip" dest="calabash/calabash.zip" usetimestamp="true"/>
+		<unzip src="calabash/calabash.zip" dest="lib">
+			<patternset>
+				<include name="**/*.jar"/>
+			</patternset>
+			<mapper type="flatten"/>
+		</unzip>
+	</target>
+	
+	<target name="clean">
+		<echo>Cleaning the build and dist directories</echo>
+		<delete dir="build"/>
+		<delete dir="dist"/>
+	</target>
+
+	<target name="init" depends="clean">
+		<echo>Creating the required directories ...</echo>
+		<mkdir dir="dist"/>
+		<mkdir dir="build/WEB-INF/classes"/>		
+		<mkdir dir="build/WEB-INF/lib"/>
+	</target>
+
+	<target name="compile" depends="init">
+		<echo>Compiling Java source files ...</echo>
+		<javac srcdir="src" destdir="build/WEB-INF/classes" includeAntRuntime="false" debug="true" debuglevel="lines,vars,source">
+			<classpath>
+				<fileset dir="lib">
+					<include name="**/*.jar"/>
+				</fileset>
+			</classpath>
+		</javac>
+	</target>	
+	
+	<target name="copy" depends="compile">
+		<echo>Copying auxiliary files ...</echo>
+		<copy todir="build/xproc">
+			<fileset dir="xproc"/>
+		</copy>
+		<copy todir="build/WEB-INF">
+			<fileset dir="etc"/>			
+		</copy>		
+		<copy todir="build/WEB-INF/lib">
+			<fileset dir="lib">
+				<exclude name="**/servlet-api.jar"/>
+			</fileset>
+		</copy>
+		<!--
+		<copy todir="build">
+			<fileset dir="web"/>
+		</copy>
+		-->
+	</target>		
+
+	<target name="war" depends="copy">
+		<echo>Building the war file ...</echo>
+		<war destfile="dist/xproc-z.war" webxml="build/WEB-INF/web.xml">
+			<fileset dir="build"/>
+		</war>
+	</target>
+
+</project>
