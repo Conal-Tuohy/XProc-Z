@@ -12,20 +12,9 @@
 
 	<path id="classpath">
 		<fileset dir="lib" includes="*.jar"/>
+		<fileset dir="build/lib" includes="*.jar"/>
 	</path>
 
-	<target name="calabash">
-		<echo>Installing XML Calabash</echo>
-		<mkdir dir="calabash"/>
-		<mkdir dir="lib"/>
-		<get src="http://xmlcalabash.com/download/calabash-1.0.21-95.zip" dest="calabash/calabash.zip" usetimestamp="true"/>
-		<unzip src="calabash/calabash.zip" dest="lib">
-			<patternset>
-				<include name="**/*.jar"/>
-			</patternset>
-			<mapper type="flatten"/>
-		</unzip>
-	</target>
 	
 	<target name="clean">
 		<echo>Cleaning the build and dist directories</echo>
@@ -33,11 +22,21 @@
 		<delete dir="dist"/>
 	</target>
 
-	<target name="init" depends="clean">
+	<target name="init">
 		<echo>Creating the required directories ...</echo>
 		<mkdir dir="dist"/>
-		<mkdir dir="build/WEB-INF/classes"/>		
-		<mkdir dir="build/WEB-INF/lib"/>
+		<mkdir dir="build/webapp"/>
+		<mkdir dir="build/lib"/>
+		<mkdir dir="build/webapp/WEB-INF/classes"/>		
+		<mkdir dir="build/webapp/WEB-INF/lib"/>
+		<echo>Installing XML Calabash libraries ...</echo>
+		<get src="http://xmlcalabash.com/download/calabash-1.0.21-95.zip" dest="build/calabash.zip" skipexisting="true"/>
+		<unzip src="build/calabash.zip" dest="build/lib">
+			<patternset>
+				<include name="**/*.jar"/>
+			</patternset>
+			<mapper type="flatten"/>
+		</unzip>
 	</target>
 
 	<target name="compile" depends="init">
@@ -52,29 +51,24 @@
 	</target>	
 	
 	<target name="copy" depends="compile">
-		<echo>Copying auxiliary files ...</echo>
-		<copy todir="build/xproc">
+		<echo>Copying files ...</echo>
+		<copy todir="build/webapp/xproc">
 			<fileset dir="xproc"/>
 		</copy>
-		<copy todir="build/WEB-INF">
+		<copy todir="build/webapp/WEB-INF">
 			<fileset dir="etc"/>			
 		</copy>		
-		<copy todir="build/WEB-INF/lib">
-			<fileset dir="lib">
-				<exclude name="**/servlet-api.jar"/>
+		<copy todir="build/webapp/WEB-INF/lib">
+			<fileset dir="build/lib">
+				<include name="*.jar"/>
 			</fileset>
 		</copy>
-		<!--
-		<copy todir="build">
-			<fileset dir="web"/>
-		</copy>
-		-->
 	</target>		
 
 	<target name="war" depends="copy">
 		<echo>Building the war file ...</echo>
-		<war destfile="dist/xproc-z.war" webxml="build/WEB-INF/web.xml">
-			<fileset dir="build"/>
+		<war destfile="dist/xproc-z.war" webxml="build/webapp/WEB-INF/web.xml">
+			<fileset dir="build/webapp"/>
 		</war>
 	</target>
 
