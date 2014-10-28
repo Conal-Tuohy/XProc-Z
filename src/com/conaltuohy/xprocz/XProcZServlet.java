@@ -167,7 +167,6 @@ public class XProcZServlet extends HttpServlet {
 				Element multipart = requestXML.createElementNS(XPROC_STEP_NS, "multipart");
 				multipart.setAttribute("content-type", req.getContentType());
 				request.appendChild(multipart);
-				// c:multipart requires a @boundary so for validity we include it although it will hardly be needed
 				multipart.setAttribute("boundary", boundary); 
 				// for each part, create a c:body
 				for (Part part: req.getParts()) {
@@ -191,11 +190,14 @@ public class XProcZServlet extends HttpServlet {
 				// <c:body content-type="application/rdf+xml"><rdf:RDF etc.../></c:body>
 				// otherwise if text then copy it unparsed
 				// <c:body content-type="text/plain">This &amp; that</c:body>
-				if (req.getContentType().startsWith("text/")) {
+				if (req.getContentType().startsWith("text/") || req.getContentType().equals("application/x-www-form-urlencoded")) {
 						InputStream inputStream = req.getInputStream();
 						body.appendChild(
 							requestXML.createTextNode(
-								readText(inputStream, req.getCharacterEncoding())
+								readText(inputStream, getCharacterEncoding(req))
+							/*
+							getCharacterEncoding(req)
+							*/
 							)
 						);
 						inputStream.close();
@@ -259,7 +261,7 @@ public class XProcZServlet extends HttpServlet {
 	
 	private String getCharacterEncoding(HttpServletRequest req) {
 		String encoding = req.getCharacterEncoding();
-		if (req == null) {
+		if (encoding == null) {
 			return "ISO-8859-1";
 		} else {
 			return encoding;
