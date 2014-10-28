@@ -41,9 +41,12 @@
 
 	<target name="compile" depends="init">
 		<echo>Compiling Java source files ...</echo>
-		<javac srcdir="src" destdir="build/WEB-INF/classes" includeAntRuntime="false" debug="true" debuglevel="lines,vars,source">
+		<javac srcdir="src" destdir="build/webapp/WEB-INF/classes" includeAntRuntime="false" debug="true" debuglevel="lines,vars,source">
 			<classpath>
 				<fileset dir="lib">
+					<include name="**/*.jar"/>
+				</fileset>
+				<fileset dir="build/lib">
 					<include name="**/*.jar"/>
 				</fileset>
 			</classpath>
@@ -60,7 +63,8 @@
 		</copy>		
 		<copy todir="build/webapp/WEB-INF/lib">
 			<fileset dir="build/lib">
-				<include name="*.jar"/>
+				<include name="**/*.jar"/>
+				<exclude name="**/servlet-api.jar"/>
 			</fileset>
 		</copy>
 	</target>		
