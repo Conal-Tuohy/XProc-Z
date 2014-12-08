@@ -79,20 +79,51 @@
 			</p:when>
 			<p:otherwise>
 				<!-- no parameters specified -->
-				<p:identity>
+				<p:http-request>
 					<p:input port="source">
 						<p:inline>
-							<html xmlns="http://www.w3.org/1999/xhtml">
-								<head>
-									 <title>Visualize Distribution of Illustrations in Walters Manuscripts</title>
-								</head>
-								<body>
-									<p>No parameters were specified</p>
-								</body>
-							</html>
+							<c:request 
+								method="get"
+								href="http://www.thedigitalwalters.org/Data/WaltersManuscripts/ManuscriptDescriptions/"/>
 						</p:inline>
 					</p:input>
-				</p:identity>
+				</p:http-request>
+				<p:unescape-markup content-type="text/html"/>
+				<p:xslt>
+					<p:input port="parameters">
+						<p:empty/>
+					</p:input>
+					<p:input port="stylesheet">
+						<p:inline>
+							<xsl:stylesheet version="1.0" 
+								xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+								xmlns:html="http://www.w3.org/1999/xhtml"
+								exclude-result-prefixes="html">
+								<xsl:template match="/">
+									<html xmlns="http://www.w3.org/1999/xhtml">
+										<head>
+											 <title>Visualize Distribution of Illustrations in Walters Manuscripts</title>
+										</head>
+										<body>
+											<form action="#" method="get">
+												<p>Select manuscripts to visualize.</p>
+												<p>
+													<button type="submit" name="visualize" value="visualize">Visualize</button>
+												</p>
+												<xsl:variable name="manuscripts" select="//html:pre//html:a[contains(@href, '.xml')]"/>
+												<select name="file" multiple="multiple" size="{count($manuscripts)}">
+													<xsl:for-each select="$manuscripts">
+														<option><xsl:value-of select="."/></option>
+													</xsl:for-each>
+												</select>
+											</form>
+										</body>
+									</html>
+								</xsl:template>
+							</xsl:stylesheet>
+						</p:inline>
+					</p:input>
+				</p:xslt>
 			</p:otherwise>
 		</p:choose>
 		
