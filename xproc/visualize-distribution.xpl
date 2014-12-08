@@ -78,7 +78,9 @@
 				</p:xslt>
 			</p:when>
 			<p:otherwise>
-				<!-- no parameters specified -->
+				<!-- no parameters specified, so provide the user with a list of documents from which they can make a selection -->
+				
+				<!-- request the HTML page containing the list of documents from server -->
 				<p:http-request>
 					<p:input port="source">
 						<p:inline>
@@ -88,7 +90,11 @@
 						</p:inline>
 					</p:input>
 				</p:http-request>
+				
+				<!-- convert the HTML to XML -->
 				<p:unescape-markup content-type="text/html"/>
+				
+				<!-- transform the XHTML to convert the list of links to files into a selectable list -->
 				<p:xslt>
 					<p:input port="parameters">
 						<p:empty/>
@@ -110,6 +116,7 @@
 												<p>
 													<button type="submit" name="visualize" value="visualize">Visualize</button>
 												</p>
+												<!-- the manuscripts are the links to .xml files -->
 												<xsl:variable name="manuscripts" select="//html:pre//html:a[contains(@href, '.xml')]"/>
 												<select name="file" multiple="multiple" size="{count($manuscripts)}">
 													<xsl:for-each select="$manuscripts">
