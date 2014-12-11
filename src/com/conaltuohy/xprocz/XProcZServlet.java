@@ -196,7 +196,7 @@ public class XProcZServlet extends HttpServlet {
 			// sending the result to the HTTP client
 			XProcConfiguration config = new XProcConfiguration();
 			XProcRuntime runtime = new XProcRuntime(config);
-			Input input = new Input("file:///usr/src/XProc-Z/xproc/xproc-z.xpl");
+			Input input = new Input("xproc/xproc-z.xpl");
 			XPipeline pipeline = runtime.load(input);
 			// wrap request DOM in Saxon XdmNode
 			XdmNode inputDocument = runtime.getProcessor().newDocumentBuilder().wrap(requestXML);
