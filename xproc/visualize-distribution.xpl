@@ -15,7 +15,7 @@
 		<p:variable name="parameter-string" select="substring-after(/c:request/@href, '?')"/>
 		
 		<p:choose>
-			<p:when test="$parameter-string">
+			<p:when test="contains($parameter-string, 'file=')">
 			
 				<!-- decode the request parameters into a c:param-set document http://www.w3.org/TR/xproc/#cv.param-set -->
 				<p:www-form-urldecode>
