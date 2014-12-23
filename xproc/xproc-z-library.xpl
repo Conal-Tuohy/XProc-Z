@@ -1,8 +1,33 @@
-<p:library version="1.0" 
-	xmlns:p="http://www.w3.org/ns/xproc" 
-	xmlns:c="http://www.w3.org/ns/xproc-step" 
-	xmlns:z="https://github.com/Conal-Tuohy/XProc-Z" 
-	xmlns:fn="http://www.w3.org/2005/xpath-functions">
+<p:library version="1.0" xmlns:p="http://www.w3.org/ns/xproc" xmlns:c="http://www.w3.org/ns/xproc-step" xmlns:z="https://github.com/Conal-Tuohy/XProc-Z" xmlns:fn="http://www.w3.org/2005/xpath-functions">
+	
+	<p:pipeline type="z:parse-request-uri">
+		<p:xslt>
+			<p:input port="stylesheet">
+				<p:inline>
+					<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:c="http://www.w3.org/ns/xproc-step">
+						<xsl:template match="/">
+							<c:param-set>
+								<xsl:analyze-string 
+									select="/c:request/@href" 
+									regex="^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)(\?.*)$">
+									<xsl:matching-substring>
+										<c:param name="scheme" value="{regex-group(1)}"/>
+										<c:param name="host" value="{regex-group(2)}"/>
+										<c:param name="port" value="{regex-group(3)}"/>
+										<c:param name="path" value="{regex-group(4)}"/>
+										<c:param name="query" value="{regex-group(5)}"/>
+									</xsl:matching-substring>
+								</xsl:analyze-string>
+							</c:param-set>
+						</xsl:template>
+					</xsl:stylesheet>
+				</p:inline>
+			</p:input>
+			<p:input port="parameters">
+				<p:empty/>
+			</p:input>
+		</p:xslt>
+	</p:pipeline>
 	
 	<p:pipeline type="z:parse-parameters">
 		<p:xslt>
@@ -11,30 +36,39 @@
 					<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:c="http://www.w3.org/ns/xproc-step" xmlns:xs="http://www.w3.org/2001/XMLSchema">
 						<xsl:template match="/">
 							<c:multipart>
-								<!--<xsl:copy-of select="."/>-->
-								<xsl:apply-templates mode="urldecode" select="/c:request/c:body[@content-type='application/x-www-form-urlencoded']"/>
+								<xsl:call-template name="urldecode">
+									<xsl:with-param name="urlencoded" select="/c:request/c:body[@content-type='application/x-www-form-urlencoded']"/>
+								</xsl:call-template>
+								<xsl:call-template name="urldecode">
+									<xsl:with-param name="urlencoded" select="substring-after(/c:request/@href, '?')"/>
+								</xsl:call-template>
 							</c:multipart>
 						</xsl:template>
-						<xsl:template match="text()" mode="urldecode">
-							<xsl:analyze-string select="." regex="([^&amp;]+)">
-								<xsl:matching-substring>
-									<xsl:variable name="name">
-										<xsl:call-template name="decode">
-											<xsl:with-param name="text" select="substring-before(., '=')"/>
-										</xsl:call-template>
-									</xsl:variable>
-									<xsl:variable name="value">
-										<xsl:call-template name="decode">
-											<xsl:with-param name="text" select="substring-after(., '=')"/>
-										</xsl:call-template>
-									</xsl:variable>
-									<c:part name="{$name}"><xsl:value-of select="$value"/></c:part>
-								</xsl:matching-substring>
-							</xsl:analyze-string>
+						<xsl:template name="urldecode">
+							<xsl:param name="urlencoded"/>
+							<xsl:if test="$urlencoded">
+								<xsl:analyze-string select="translate($urlencoded, '+', ' ')" regex="([^&amp;]+)">
+									<xsl:matching-substring>
+										<xsl:variable name="name">
+											<xsl:call-template name="decode">
+												<xsl:with-param name="text" select="substring-before(., '=')"/>
+											</xsl:call-template>
+										</xsl:variable>
+										<xsl:variable name="value">
+											<xsl:call-template name="decode">
+												<xsl:with-param name="text" select="substring-after(., '=')"/>
+											</xsl:call-template>
+										</xsl:variable>
+										<c:part name="{$name}">
+											<xsl:value-of select="$value"/>
+										</c:part>
+									</xsl:matching-substring>
+								</xsl:analyze-string>
+							</xsl:if>
 						</xsl:template>
 						<xsl:template name="decode">
 							<xsl:param name="text"/>
-							<!-- TODO unescape and decode UTF-8 -->
+							<!-- unescape and decode UTF-8 -->
 							<!-- http://en.wikipedia.org/wiki/UTF-8#Description -->
 							<xsl:variable name="ascii" select="substring-before(concat($text, '%'), '%')"/>
 							<xsl:value-of select="$ascii"/>
