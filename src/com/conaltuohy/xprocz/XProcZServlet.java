@@ -75,20 +75,7 @@ public class XProcZServlet extends HttpServlet {
 	private final static SAXTransformerFactory transformerFactory = (SAXTransformerFactory) TransformerFactory.newInstance();
 	private final static DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 	private DocumentBuilder builder;
- 	private class RunnablePipeline implements Runnable {
-		private XPipeline pipeline;
-		Exception e = null;
-		RunnablePipeline(XPipeline pipeline) {
-			this.pipeline = pipeline;
-		}
-		public void run() {
-			try {
-				pipeline.run();
-			} catch (Exception e) {
-				this.e = e;
-			}
-		}
-	};      
+	
     /**
      * @see HttpServlet#HttpServlet()
      */
@@ -296,23 +283,11 @@ public class XProcZServlet extends HttpServlet {
 			// wrap request DOM in Saxon XdmNode
 			XdmNode inputDocument = runtime.getProcessor().newDocumentBuilder().wrap(requestXML);
 			pipeline.writeTo("source", inputDocument);
-			
-			// test of asynchrony
-			long startTime = System.currentTimeMillis();
-			System.out.println("Starting");
-			new Thread(new RunnablePipeline(pipeline)).start();
-			System.out.println("Started " + Long.toString(System.currentTimeMillis() - startTime));
-			//pipeline.run();
-			System.out.println("Reading " + Long.toString(System.currentTimeMillis() - startTime));
+			pipeline.run();
 			ReadablePipe result = pipeline.readFrom("result");
-			while (result.documentCount() == 0) {};
 			XdmNode outputDocument = result.read();
-			System.out.println("Read " + Long.toString(System.currentTimeMillis() - startTime));
-			/*
-			// quick and dirty serialization
-			DOMSource domSource = new DOMSource(requestXML);
-			transformer.transform(domSource, result);
-			*/
+			
+			// generate HTTP Response from pipeline output
 			OutputStreamWriter writer = new OutputStreamWriter(os);
 			QName responseName = new QName(XPROC_STEP_NS, "response");
 			XdmNode rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD, responseName).next();
