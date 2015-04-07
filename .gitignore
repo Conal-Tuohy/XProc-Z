@@ -1,0 +1,9 @@
+# files to not be committed to the repository
+
+# ignore build artifacts
+/build/
+/dist/
+
+# ignore backup files
+*.*~
+
