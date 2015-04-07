@@ -1,5 +1,4 @@
 package com.conaltuohy.xprocz;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -7,9 +6,14 @@ import java.io.PrintWriter;
 import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.TimeZone;
+
+
+import org.apache.commons.codec.binary.Base64;
+
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -18,7 +22,9 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.XMLConstants;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
@@ -35,7 +41,7 @@ import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
-
+import org.xml.sax.SAXException;
 import net.sf.saxon.s9api.SaxonApiException;
 
 import com.xmlcalabash.core.XProcRuntime;
@@ -55,6 +61,7 @@ import java.io.Reader;
 import java.io.InputStreamReader;
 import javax.servlet.http.Part;
 import javax.servlet.annotation.MultipartConfig;
+import javax.xml.parsers.ParserConfigurationException;
 /**
  * Servlet implementation class XProcZServlet
  * The RetailerServlet is a host for HTTP server applications written in XProc.
@@ -67,7 +74,21 @@ public class XProcZServlet extends HttpServlet {
 	
 	private final static SAXTransformerFactory transformerFactory = (SAXTransformerFactory) TransformerFactory.newInstance();
 	private final static DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-       
+	private DocumentBuilder builder;
+ 	private class RunnablePipeline implements Runnable {
+		private XPipeline pipeline;
+		Exception e = null;
+		RunnablePipeline(XPipeline pipeline) {
+			this.pipeline = pipeline;
+		}
+		public void run() {
+			try {
+				pipeline.run();
+			} catch (Exception e) {
+				this.e = e;
+			}
+		}
+	};      
     /**
      * @see HttpServlet#HttpServlet()
      */
@@ -75,7 +96,24 @@ public class XProcZServlet extends HttpServlet {
         super();
     }
     
-	/** Respond to an HTTP request using an XProc pipeline.
+    public void init() throws ServletException {
+    	 try {
+    	 	 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+    	 	 builder = factory.newDocumentBuilder();
+    	 } catch (ParserConfigurationException pce) {
+    	 	 // should not happen as support for FEATURE_SECURE_PROCESSING is mandatory
+    	 	 throw new ServletException(pce);
+    	 }
+    }
+    
+    private Document parseXML(InputStream inputStream) throws SAXException, IOException {
+    	 // TODO should a parse failure trigger re-processing as plain text?
+    	 Document document = builder.parse(inputStream);
+    	 inputStream.close();
+    	 return document;
+    }
+
+    /** Respond to an HTTP request using an XProc pipeline.
 	* • Create an XML document representing the HTTP request
 	* • Transform the document using the XProc pipeline, returning the 
 	* result to the HTTP client.
@@ -162,34 +200,91 @@ public class XProcZServlet extends HttpServlet {
 					if (partContentType == null) {
 						partContentType = "text/plain";
 					}
+					String disposition = part.getHeader("Content-Disposition");
+					if (disposition != null) {
+						body.setAttribute("disposition", disposition);
+					}
 					body.setAttribute("content-type", partContentType);
-					body.setAttribute("id", part.getName()); // CHECK: is part.getName() really = c:body/@id?
-					// TODO insert the actual content of the part - as in the case of simple content, below
-				}
-			} else {
-				// content is simple
-				// TODO create c:body element
-				Element body = requestXML.createElementNS(XPROC_STEP_NS, "body");
-				request.appendChild(body);
-				body.setAttribute("content-type", req.getContentType());
-				// TODO if it's XML then parse it and place root element inside
-				// <c:body content-type="application/rdf+xml"><rdf:RDF etc.../></c:body>
-				// otherwise if text then copy it unparsed
-				// <c:body content-type="text/plain">This &amp; that</c:body>
-				if (req.getContentType().startsWith("text/") || req.getContentType().equals("application/x-www-form-urlencoded")) {
-						InputStream inputStream = req.getInputStream();
+					String contentId = part.getHeader("Content-ID");
+					if (contentId != null) {
+						body.setAttribute("id", contentId);
+					}
+					String contentDescription = part.getHeader("Content-Description");
+					if (contentDescription != null) {
+						body.setAttribute("description", contentDescription);
+					}
+					// TODO allow badly formed XML content to fall back to being processed as text
+					// insert the actual content of the part
+					if (isXMLMediaType(partContentType)) {
+						// parse XML
+						Document uploadedDocument = parseXML(part.getInputStream());
+						// TODO also import top-level comments, processing instructions, etc?
+						body.appendChild(
+							body.getOwnerDocument().adoptNode(
+								uploadedDocument.getDocumentElement()
+							)
+						);
+					} else if (isTextMediaType(partContentType)) {
+						// otherwise if text then copy it unparsed
+						// <c:body content-type="text/plain">This &amp; that</c:body>
+						InputStream inputStream = part.getInputStream();
 						body.appendChild(
 							requestXML.createTextNode(
 								readText(inputStream, getCharacterEncoding(req))
-							/*
-							getCharacterEncoding(req)
-							*/
 							)
 						);
 						inputStream.close();
+					} else {
+						// Base64 encode binary data
+						body.setAttribute("encoding", "base64");
+						InputStream inputStream = part.getInputStream();
+						body.appendChild(
+							requestXML.createTextNode(
+								readBinary(inputStream)
+							)
+						);
+						inputStream.close();
+					}
 				}
-				// TODO or if binary then base64 encode it 
+			} else {
+				// content is simple
+				// create c:body element
+				Element body = requestXML.createElementNS(XPROC_STEP_NS, "body");
+				request.appendChild(body);
+				body.setAttribute("content-type", req.getContentType());
+				String contentType = req.getContentType();
+				if (isXMLMediaType(contentType)) {
+					// TODO if it's XML then parse it and place root element inside
+					// <c:body content-type="application/rdf+xml"><rdf:RDF etc.../></c:body>
+					Document uploadedDocument = parseXML(req.getInputStream());
+					// TODO also import top-level comments, processing instructions, etc?
+					body.appendChild(
+						body.getOwnerDocument().adoptNode(
+							uploadedDocument.getDocumentElement()
+						)
+					);
+				} else if (isTextMediaType(contentType)) {
+					// otherwise if text then copy it unparsed
+					// <c:body content-type="text/plain">This &amp; that</c:body>
+					InputStream inputStream = req.getInputStream();
+					body.appendChild(
+						requestXML.createTextNode(
+							readText(inputStream, getCharacterEncoding(req))
+						)
+					);
+					inputStream.close();
+				} else {
+				// ... or if binary then base64 encode it 
 				// <c:body content-type="application/pdf" encoding = "base64">...</c:body>
+					body.setAttribute("encoding", "base64");
+					InputStream inputStream = req.getInputStream();
+					body.appendChild(
+						requestXML.createTextNode(
+							readBinary(inputStream)
+						)
+					);
+					inputStream.close();
+				}
 			}
 			
 			// Process the XML document which describes the HTTP request, 
@@ -201,9 +296,18 @@ public class XProcZServlet extends HttpServlet {
 			// wrap request DOM in Saxon XdmNode
 			XdmNode inputDocument = runtime.getProcessor().newDocumentBuilder().wrap(requestXML);
 			pipeline.writeTo("source", inputDocument);
-			pipeline.run();
+			
+			// test of asynchrony
+			long startTime = System.currentTimeMillis();
+			System.out.println("Starting");
+			new Thread(new RunnablePipeline(pipeline)).start();
+			System.out.println("Started " + Long.toString(System.currentTimeMillis() - startTime));
+			//pipeline.run();
+			System.out.println("Reading " + Long.toString(System.currentTimeMillis() - startTime));
 			ReadablePipe result = pipeline.readFrom("result");
+			while (result.documentCount() == 0) {};
 			XdmNode outputDocument = result.read();
+			System.out.println("Read " + Long.toString(System.currentTimeMillis() - startTime));
 			/*
 			// quick and dirty serialization
 			DOMSource domSource = new DOMSource(requestXML);
@@ -270,8 +374,40 @@ public class XProcZServlet extends HttpServlet {
 		}
 	}
 	
+	/**
+	* Determine whether content is, or can be treated as, plain text
+	*/
+	private boolean isTextMediaType(String mediaType) {
+		return (
+			mediaType.startsWith("text/") ||
+			mediaType.equals("application/x-www-form-urlencoded") ||
+			(
+				mediaType.startsWith("application/") && 
+				mediaType.endsWith("+json")
+			)
+		);
+	}
+	
+	
+	/**
+	* Determine whether content is already XML, or alternatively, will need to be encoded as XML
+	* See <a href="https://tools.ietf.org/html/rfc7303">RFC7303</a>
+	*/
+	private boolean isXMLMediaType(String mediaType) {
+		return (
+			mediaType.equals("application/xml") ||
+			mediaType.equals("application/xml-external-parsed-entity") ||
+			mediaType.equals("text/xml") ||
+			mediaType.equals("text/xml-external-parsed-entity") ||
+			(
+				mediaType.startsWith("application/") && 
+				mediaType.endsWith("+xml")
+			)
+		);
+	}
+	
 	// Read text from the input stream
-	public String readText(InputStream inputStream, String characterEncoding) 
+	private String readText(InputStream inputStream, String characterEncoding) 
 		throws IOException, UnsupportedEncodingException {
 		char[] buffer = new char[1024];
 		StringBuilder builder = new StringBuilder();
@@ -283,5 +419,23 @@ public class XProcZServlet extends HttpServlet {
 		}
 		return builder.toString();
 	}
-
+	
+	// Read binary data from the input stream and return Base64 encoded text
+	private String readBinary(InputStream inputStream) 
+		throws IOException {
+		byte[] buffer = new byte[1024];
+		StringBuilder builder = new StringBuilder();
+		int bytesRead = inputStream.read(buffer, 0, buffer.length);
+		while (bytesRead > -1) {
+			byte[] readBuffer;
+			if (bytesRead == 1024) {
+				readBuffer = buffer;
+			} else {
+				readBuffer = Arrays.copyOfRange(buffer, 0, bytesRead);
+			}
+			builder.append(Base64.encodeBase64String(readBuffer));
+			bytesRead = inputStream.read(buffer, 0, buffer.length);
+		}
+		return builder.toString();
+	}
 }
