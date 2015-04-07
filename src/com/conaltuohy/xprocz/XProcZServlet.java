@@ -288,29 +288,56 @@ public class XProcZServlet extends HttpServlet {
 			XdmNode outputDocument = result.read();
 			
 			// generate HTTP Response from pipeline output
-			OutputStreamWriter writer = new OutputStreamWriter(os);
 			QName responseName = new QName(XPROC_STEP_NS, "response");
 			XdmNode rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD, responseName).next();
 			String statusAttribute = rootElement.getAttributeValue( new QName("status"));
+			resp.setStatus(Integer.valueOf(statusAttribute));
 			QName bodyName = new QName(XPROC_STEP_NS, "body");
 			XdmNode bodyElement = (XdmNode) rootElement.axisIterator(Axis.CHILD, bodyName).next();
-			String contentType = bodyElement.getAttributeValue( new QName ("content-type") );
-			XdmSequenceIterator content = bodyElement.axisIterator(Axis.CHILD);
-			resp.setStatus(Integer.valueOf(statusAttribute));
-			resp.setContentType(contentType);
-			QName headerName = new QName(XPROC_STEP_NS, "header");
-			XdmSequenceIterator headers = rootElement.axisIterator(Axis.CHILD, headerName);
-			QName nameName = new QName("name");
-			QName valueName = new QName("value");
-			while (headers.hasNext()) {
-				XdmNode headerNode = (XdmNode) headers.next();
-				resp.setHeader(headerNode.getAttributeValue(nameName), headerNode.getAttributeValue(valueName));
+			if (bodyElement != null) {
+				// there is an entity body to return
+				String encoding = bodyElement.getAttributeValue( new QName("encoding") );
+				String contentType = bodyElement.getAttributeValue( new QName ("content-type") );
+				String contentDisposition = bodyElement.getAttributeValue( new QName ("disposition") );
+				if (contentDisposition != null) {
+					resp.addHeader("Content-Disposition", contentDisposition);
+				}
+				XdmSequenceIterator content = bodyElement.axisIterator(Axis.CHILD);
+				resp.setContentType(contentType);
+				QName headerName = new QName(XPROC_STEP_NS, "header");
+				XdmSequenceIterator headers = rootElement.axisIterator(Axis.CHILD, headerName);
+				QName nameName = new QName("name");
+				QName valueName = new QName("value");
+				while (headers.hasNext()) {
+					XdmNode headerNode = (XdmNode) headers.next();
+					resp.addHeader(headerNode.getAttributeValue(nameName), headerNode.getAttributeValue(valueName));
+				}
+				if ("base64".equals(encoding)) {
+					// decode base64 encoded binary data and stream to http client
+					os.write(
+						Base64.decodeBase64(
+							content.next().toString()
+						)
+					);
+				} else if (isXMLMediaType(contentType)) {
+					// output the sequence of XML nodes within the c:body element using toString to
+					// produce an XML serialization of each one
+					OutputStreamWriter writer = new OutputStreamWriter(os);
+					while (content.hasNext()) {
+						XdmItem contentItem = content.next();
+						writer.write(contentItem.toString());
+					}
+					writer.flush();
+				} else {
+					// output plain text content within the c:body element by writing its string value
+					OutputStreamWriter writer = new OutputStreamWriter(os);
+					while (content.hasNext()) {
+						XdmItem contentItem = content.next();
+						writer.write(contentItem.getStringValue());
+					}
+					writer.flush();
+				}
 			}
-			while (content.hasNext()) {
-				XdmItem contentItem = content.next();
-				writer.write(contentItem.toString());
-			}
-			writer.flush();
 		} catch (Exception pipelineFailed) {
 			getServletContext().log("Pipeline failed", pipelineFailed);
 			resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -413,4 +440,5 @@ public class XProcZServlet extends HttpServlet {
 		}
 		return builder.toString();
 	}
+
 }
