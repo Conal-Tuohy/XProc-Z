@@ -59,9 +59,9 @@
 												<xsl:with-param name="text" select="substring-after(., '=')"/>
 											</xsl:call-template>
 										</xsl:variable>
-										<c:part name="{$name}">
+										<c:body id="{$name}">
 											<xsl:value-of select="$value"/>
-										</c:part>
+										</c:body>
 									</xsl:matching-substring>
 								</xsl:analyze-string>
 							</xsl:if>
