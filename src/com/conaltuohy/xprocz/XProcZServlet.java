@@ -76,6 +76,7 @@ public class XProcZServlet extends HttpServlet {
 	private final static DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 	private DocumentBuilder builder;
 	
+	private XProcRuntime runtime = new XProcRuntime(new XProcConfiguration());
     /**
      * @see HttpServlet#HttpServlet()
      */
@@ -99,29 +100,14 @@ public class XProcZServlet extends HttpServlet {
     	 inputStream.close();
     	 return document;
     }
-
-    /** Respond to an HTTP request using an XProc pipeline.
-	* • Create an XML document representing the HTTP request
-	* • Transform the document using the XProc pipeline, returning the 
-	* result to the HTTP client.
-	 * @see javax.servlet.http.HttpServlet#service(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse)
-	 */
-	@Override
-	public void service(HttpServletRequest req, HttpServletResponse resp)
-			throws ServletException, IOException {
-		
-		// Create a stream to send response XML to the HTTP client
-		OutputStream os = resp.getOutputStream();
-
-		// Create a document describing the HTTP request,
+    
+    private XdmNode getRequestDocument(HttpServletRequest req) 
+    	throws ParserConfigurationException, SAXException, IOException, ServletException {
+    	 	// Create a document describing the HTTP request,
 		// from request parameters, headers, etc.
 		// to be the input document for the XProc pipeline.
 		Document requestXML = null;
-		try {
-			requestXML = factory.newDocumentBuilder().newDocument();
-		} catch (ParserConfigurationException documentCreationFailed) {
-			fail(documentCreationFailed, "Error creating DOM Document");
-		}
+		requestXML = factory.newDocumentBuilder().newDocument();
 		
 		// Populate the XML document from the HTTP request data
 		/*
@@ -140,7 +126,6 @@ public class XProcZServlet extends HttpServlet {
 				c:body)?)
 		</request>
 		*/
-		try {
 			Element request = requestXML.createElementNS(XPROC_STEP_NS, "request");
 			requestXML.appendChild(request);
 			String queryString = req.getQueryString();
@@ -273,21 +258,14 @@ public class XProcZServlet extends HttpServlet {
 					inputStream.close();
 				}
 			}
-			
-			// Process the XML document which describes the HTTP request, 
-			// sending the result to the HTTP client
-			XProcConfiguration config = new XProcConfiguration();
-			XProcRuntime runtime = new XProcRuntime(config);
-			Input input = new Input(getServletContext().getRealPath("/xproc/xproc-z.xpl"));
-			XPipeline pipeline = runtime.load(input);
 			// wrap request DOM in Saxon XdmNode
 			XdmNode inputDocument = runtime.getProcessor().newDocumentBuilder().wrap(requestXML);
-			pipeline.writeTo("source", inputDocument);
-			pipeline.run();
-			ReadablePipe result = pipeline.readFrom("result");
-			XdmNode outputDocument = result.read();
-			
-			// generate HTTP Response from pipeline output
+			return inputDocument;
+    }
+
+    private void respond(HttpServletResponse resp, XdmNode outputDocument) throws IOException {
+			// Create a stream to send response XML to the HTTP client
+			OutputStream os = resp.getOutputStream();
 			QName responseName = new QName(XPROC_STEP_NS, "response");
 			XdmNode rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD, responseName).next();
 			String statusAttribute = rootElement.getAttributeValue( new QName("status"));
@@ -338,10 +316,47 @@ public class XProcZServlet extends HttpServlet {
 					writer.flush();
 				}
 			}
+	}
+	
+    /** Respond to an HTTP request using an XProc pipeline.
+	* • Create an XML document representing the HTTP request
+	* • Transform the document using the XProc pipeline, returning the 
+	* result to the HTTP client.
+	 * @see javax.servlet.http.HttpServlet#service(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse)
+	 */
+	@Override
+	public void service(HttpServletRequest req, HttpServletResponse resp)
+			throws ServletException, IOException {
+		
+
+		try {
+			// marshal the HTTP request into an XdmNode as a c:request document
+			XdmNode inputDocument = getRequestDocument(req);
+			// Process the XML document which describes the HTTP request, 
+			// sending the result to the HTTP client
+			Input input = new Input(getServletContext().getRealPath("/xproc/xproc-z.xpl"));
+			XPipeline pipeline = runtime.load(input);
+			pipeline.writeTo("source", inputDocument);
+			pipeline.run();
+			// TODO read multiple result documents
+			// The first is a c:response - use it make http response to client.
+			// Remaining documents are inputs for subsequent executions - spawn separate threads to execute
+			// the pipeline to handle each of these documents, and discarding any results.
+			// This allows XProc-Z to execute multiple asynchronous long-running processes.
+			
+			// https://github.com/ndw/xmlcalabash1/blob/saxon96/src/main/java/com/xmlcalabash/drivers/Main.java#L425
+			ReadablePipe result = pipeline.readFrom("result");
+			XdmNode outputDocument = result.read();
+			
+			// generate HTTP Response from pipeline output
+			respond(resp, outputDocument);
+			
+
 		} catch (Exception pipelineFailed) {
 			getServletContext().log("Pipeline failed", pipelineFailed);
 			resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 			resp.setContentType("text/plain");
+			OutputStream os = resp.getOutputStream();
 			PrintWriter writer = new PrintWriter(os);
 			if (pipelineFailed instanceof SaxonApiException) {
 				SaxonApiException e = (SaxonApiException) pipelineFailed;
@@ -357,8 +372,8 @@ public class XProcZServlet extends HttpServlet {
 			//writer.println(pipelineFailed.getMessage());
 			pipelineFailed.printStackTrace(writer);
 			writer.flush();
-		}
-		os.close();		
+			os.close();	
+		}	
 	}
 	
 	// logs an exception and re-throws it as a servlet exception
