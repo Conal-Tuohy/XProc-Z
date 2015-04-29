@@ -10,6 +10,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.HashMap;
+import java.util.Map;
 
 
 import org.apache.commons.codec.binary.Base64;
@@ -48,6 +50,7 @@ import com.xmlcalabash.core.XProcRuntime;
 import com.xmlcalabash.core.XProcConfiguration;
 import com.xmlcalabash.util.Input;
 import com.xmlcalabash.runtime.XPipeline;
+import com.xmlcalabash.model.RuntimeValue;
 import net.sf.saxon.s9api.Processor;
 import net.sf.saxon.s9api.XdmNode;
 import com.xmlcalabash.io.ReadablePipe;
@@ -69,6 +72,9 @@ import javax.xml.parsers.ParserConfigurationException;
 @MultipartConfig
 public class XProcZServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
+	private static final String SERVLET_INIT_PARAMETERS_NS = "tag:conaltuohy.com,2015:servlet-init-parameters";
+	private static final String APPLICATION_INIT_PARAMETERS_NS = "tag:conaltuohy.com,2015:webapp-init-parameters";
+	private static final String OS_ENVIRONMENT_VARIABLES_NS = "tag:conaltuohy.com,2015:os-environment-variables";
 	
 	private static final String XPROC_STEP_NS = "http://www.w3.org/ns/xproc-step";
 	
@@ -77,6 +83,7 @@ public class XProcZServlet extends HttpServlet {
 	private DocumentBuilder builder;
 	
 	private XProcRuntime runtime = new XProcRuntime(new XProcConfiguration());
+	private Map<QName, String> parameters = new HashMap<QName, String>();
     /**
      * @see HttpServlet#HttpServlet()
      */
@@ -84,13 +91,107 @@ public class XProcZServlet extends HttpServlet {
         super();
     }
     
+private class RunnablePipeline implements Runnable {
+	Exception e = null; 
+	XdmNode inputDocument = null;
+	HttpServletResponse httpResponse = null;
+	RunnablePipeline(XdmNode inputDocument) { 	
+		this.inputDocument = inputDocument; 	
+	}
+	RunnablePipeline(XdmNode inputDocument, HttpServletResponse httpResponse) { 	
+		this.inputDocument = inputDocument; 	
+		this.httpResponse = httpResponse;
+	} 
+	public void run() { 	
+		try { 	
+			getServletContext().log("Running pipeline...");
+			
+			getServletContext().log("Initializing pipeline...");
+			Input input = new Input(getServletContext().getRealPath("/xproc/xproc-z.xpl"));
+			XPipeline pipeline = runtime.load(input);
+			getServletContext().log("Passing parameters to pipeline...");
+			// attach parameters from the application's environment
+			for (QName name : parameters.keySet()) {
+				pipeline.setParameter(name, new RuntimeValue(parameters.get(name)));
+			}
+			getServletContext().log("Passing input document (http request) to pipeline...");
+			pipeline.writeTo("source", inputDocument);
+			getServletContext().log("Actually executing the pipeline...");
+			pipeline.run(); 	
+
+			// TODO read multiple result documents
+			// The first is a c:response - use it make http response to client.
+			// Remaining documents are inputs for subsequent executions - spawn separate threads to execute
+			// the pipeline to handle each of these documents, and discarding any results.
+			// This allows XProc-Z to execute multiple asynchronous long-running processes.
+			
+			// See https://github.com/ndw/xmlcalabash1/blob/saxon96/src/main/java/com/xmlcalabash/drivers/Main.java#L425
+			
+			getServletContext().log("Reading results from pipeline...");
+			ReadablePipe result = pipeline.readFrom("result");
+			getServletContext().log("Reading first result from pipeline...");
+			XdmNode outputDocument = result.read();
+			
+			// generate HTTP Response from pipeline output
+			if (httpResponse != null) {
+				// an HTTP client is waiting on a response - the pipelines's first output document is asssumed to specify that response
+				getServletContext().log("Sending HTTP response: " + String.valueOf(outputDocument.axisIterator(Axis.CHILD).next()));
+				respond(httpResponse, outputDocument);
+			}
+			
+			while (result.moreDocuments()) {
+				// subsequent documents are callbacks to the pipeline
+				getServletContext().log("Reading subsequent results from pipeline...");
+				outputDocument = result.read();
+				getServletContext().log("Pipeline produced extra document: " + outputDocument.toString());
+				//XdmNode rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD).next();
+				//while (! (rootElement.getNodeKind().equals(net.sf.saxon.s9api.XdmNodeKind.ELEMENT))) {
+				//rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD).next();
+					getServletContext().log("Recursively calling pipeline...");
+					new Thread(new RunnablePipeline(outputDocument)).start();
+					getServletContext().log("Returned from recursively calling pipeline.");
+				//}
+
+			}
+		} catch (Exception e) { 	
+			this.e = e; 	
+		} 	
+	} 	
+};    
+
+	private void addParameter(String prefix, String xmlns, String localName, String value) {
+		QName name = new QName(prefix, xmlns, localName);
+		getServletContext().log("XProc-Z parameter <c:param name='" + name + "' value='" + value + "'/>");
+		parameters.put(name, value);
+	};
+	
     public void init() throws ServletException {
+	getServletContext().log("XProc-Z initializing ...");
     	 try {
     	 	 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
     	 	 builder = factory.newDocumentBuilder();
+    	 	 // initialize the set of parameters from the servlet's environment
+		// The Servlet initialization parameters
+		for (String name : Collections.list(getServletConfig().getInitParameterNames())) {
+			addParameter("servlet", SERVLET_INIT_PARAMETERS_NS, name, getServletConfig().getInitParameter(name));
+		}
+		
+		// The web application's initialization parameters, 
+		// from WEB.xml or provided by the Servlet container
+		// e.g. parameters listed in a Tomcat 'context.xml' file
+		for (String name : Collections.list(getServletContext().getInitParameterNames())) {
+			addParameter("webapp", APPLICATION_INIT_PARAMETERS_NS, name, getServletContext().getInitParameter(name));
+		}
+		
+		// The Operating System's environment variables, 
+		for (Map.Entry<String, String> entry: System.getenv().entrySet()) {
+			addParameter("os", OS_ENVIRONMENT_VARIABLES_NS, entry.getKey(), entry.getValue());
+		}			
+		getServletContext().log("XProc-Z initialization completed successfully.");
     	 } catch (ParserConfigurationException pce) {
     	 	 // should not happen as support for FEATURE_SECURE_PROCESSING is mandatory
-    	 	 throw new ServletException(pce);
+		getServletContext().log("XProc-Z initialization failed!");
+    	 	throw new ServletException(pce);
     	 }
     }
     
@@ -334,23 +435,12 @@ public class XProcZServlet extends HttpServlet {
 			XdmNode inputDocument = getRequestDocument(req);
 			// Process the XML document which describes the HTTP request, 
 			// sending the result to the HTTP client
-			Input input = new Input(getServletContext().getRealPath("/xproc/xproc-z.xpl"));
-			XPipeline pipeline = runtime.load(input);
-			pipeline.writeTo("source", inputDocument);
+			
+			RunnablePipeline pipeline = new RunnablePipeline(inputDocument, resp);
 			pipeline.run();
-			// TODO read multiple result documents
-			// The first is a c:response - use it make http response to client.
-			// Remaining documents are inputs for subsequent executions - spawn separate threads to execute
-			// the pipeline to handle each of these documents, and discarding any results.
-			// This allows XProc-Z to execute multiple asynchronous long-running processes.
-			
-			// https://github.com/ndw/xmlcalabash1/blob/saxon96/src/main/java/com/xmlcalabash/drivers/Main.java#L425
-			ReadablePipe result = pipeline.readFrom("result");
-			XdmNode outputDocument = result.read();
-			
-			// generate HTTP Response from pipeline output
-			respond(resp, outputDocument);
-			
+			// this is clunky ... TODO replace with a call to pipeline.runReportingAnyErrors() throws Exception. Pipeline.run() should call 
+			// that same method and swallow (log) errors
+			if (pipeline.e != null) {throw pipeline.e;};
 
 		} catch (Exception pipelineFailed) {
 			getServletContext().log("Pipeline failed", pipelineFailed);
@@ -383,6 +473,8 @@ public class XProcZServlet extends HttpServlet {
 	}
 	
 	private String getCharacterEncoding(HttpServletRequest req) {
+		// The HTTP 1.1 spec says that the default is "ISO-8859-1"
+		// http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.7.1
 		String encoding = req.getCharacterEncoding();
 		if (encoding == null) {
 			return "ISO-8859-1";
