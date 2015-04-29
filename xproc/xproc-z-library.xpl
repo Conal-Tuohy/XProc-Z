@@ -29,6 +29,56 @@
 		</p:xslt>
 	</p:pipeline>
 	
+	<p:pipeline type="z:make-http-response" name="make-http-response">
+		<p:documentation>
+			Wraps its input in a c:response element in order to make an HTTP response.
+		</p:documentation>
+		<p:option name="status" select=" '200' "/>
+		<p:option name="content-type" select=" 'application/xml' "/>
+		<p:in-scope-names name="parameters"/>
+		<p:template name="http-response">
+			<p:input port="source">
+				<p:pipe step="make-http-response" port="source"/>
+			</p:input>
+			<p:input port="template">
+				<p:inline>
+					<c:response status="{$status}">
+						<c:header name="X-Powered-By" value="XProc using XML Calabash"/>
+						<c:header name="Server" value="XProc-Z"/>
+						<c:body content-type="{$content-type}">{/*}</c:body>
+					</c:response>
+				</p:inline>
+			</p:input>
+			<p:input port="parameters">
+				<p:pipe step="parameters" port="result"/>
+			</p:input>
+		</p:template>
+	</p:pipeline>
+	
+	<p:pipeline type="z:not-found">
+		<p:identity>
+			<p:input port="source">
+				<p:inline>
+					<c:response status="404">
+						<c:header name="X-Powered-By" value="XProc using XML Calabash"/>
+						<c:header name="Server" value="XProc-Z"/>
+						<c:body content-type="application/xhtml+xml">
+							<html xmlns="http://www.w3.org/1999/xhtml">
+								<head>
+									<title>Not Found</title>
+								</head>
+								<body>
+									<h1>Not Found</h1>
+									<p>The requested resource was not found.</p>
+								</body>
+							</html>
+						</c:body>
+					</c:response>
+				</p:inline>
+			</p:input>
+		</p:identity>
+	</p:pipeline>
+	
 	<p:pipeline type="z:parse-parameters">
 		<p:xslt>
 			<p:input port="stylesheet">
