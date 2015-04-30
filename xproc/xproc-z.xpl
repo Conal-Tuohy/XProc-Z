@@ -25,10 +25,10 @@
 	<p:import href="visualize-distribution.xpl"/>
 	<p:import href="examples/echo.xpl"/>
 	<p:import href="examples/menu.xpl"/>
+	<p:import href="examples/file.xpl"/>
 	<!--
 	under development
 	<p:import href="test.xpl"/>
-	<p:import href="examples/file.xpl"/>
 	<p:import href="oai-harvest.xpl"/>
 	-->
 	
@@ -45,11 +45,12 @@
 		<p:when test="starts-with($relative-uri, 'tei-viz/')">
 			<v:visualize-distribution xmlns:v="https://github.com/leoba/distributionVis"/>
 		</p:when>
-		<p:when test="starts-with($relative-uri, 'file/')">
-			<ex:file>
+		<p:when test="starts-with($relative-uri, 'upload-download/')">
+			<ex:file-upload-and-download>
 				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'file/')"/>
-			</ex:file>
+			</ex:file-upload-and-download>
 		</p:when>
+		<!--
 		<p:when test="starts-with($relative-uri, 'form-test/')">
 			<z:form-test/>
 		</p:when>
@@ -63,7 +64,7 @@
 				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'oai-harvest/')"/>
 				<p:with-option name="directory" select=" '/var/lib/xproc-z/oai-harvester/subscriptions' "/>
 			</oai:harvester>
-		</p:when>
+		</p:when>-->
 		<p:otherwise>
 			<z:not-found/>
 		</p:otherwise>

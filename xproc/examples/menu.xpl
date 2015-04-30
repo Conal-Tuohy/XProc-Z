@@ -29,16 +29,16 @@
 										<li>
 											<a href="echo/?example-parameter=example-value">HTTP request parser demo</a>
 										</li>
+										<li>
+											<a href="upload-download/">Upload a file and receive the same file in response.</a>
+										</li>
 										<!-- under development -->
+										<li>
+											<a href="data/">Upload and download files</a>
+										</li>
 										<!--
 										<li>
 											<a href="oai-harvest/">OAI-PMH Harvester</a>
-										</li>
-										<li>
-											<a href="file/">Upload a file and receive the same file in response.</a>
-										</li>
-										<li>
-											<a href="data/">Upload and download files</a>
 										</li>
 										-->
 									</ul>
