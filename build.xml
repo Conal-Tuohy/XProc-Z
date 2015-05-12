@@ -74,9 +74,11 @@
 				<include name="**/*.jar"/>
 				<exclude name="**/servlet-api.jar"/>
 			</fileset>
+			<!--
 			<fileset dir="../xmlcalabash1">
 				<include name="calabash.jar"/>
 			</fileset>
+			-->
 		</copy>
 	</target>		
 
