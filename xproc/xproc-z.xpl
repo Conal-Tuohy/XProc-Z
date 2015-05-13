@@ -47,7 +47,7 @@
 		</p:when>
 		<p:when test="starts-with($relative-uri, 'upload-download/')">
 			<ex:file-upload-and-download>
-				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'file/')"/>
+				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'upload-download/')"/>
 			</ex:file-upload-and-download>
 		</p:when>
 		<!--

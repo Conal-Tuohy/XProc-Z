@@ -64,49 +64,39 @@
 	</p:declare-step>
 	
 	<p:declare-step type="ex:file-upload-and-download" name="file-upload-and-download">
-	<p:input port='source' primary='true'/>
-	<p:input port='parameters' kind='parameter' primary='true'/>
-	<p:output port="result" primary="true" sequence="true"/>
-	<p:option name="relative-uri" select="''"/>
+		<p:input port='source' primary='true'/>
+		<p:input port='parameters' kind='parameter' primary='true'/>
+		<p:output port="result" primary="true" sequence="true"/>
+		<p:option name="relative-uri" select=" '' "/>
 		<p:choose>
-			<p:when test="$relative-uri = '' ">
+			<p:when test="not(/c:request/c:multipart)"><!--
+$relative-uri = '' ">-->
 				<p:identity>
 					<p:input port="source">
 						<p:inline>
-							<wrapper>
-								<c:response status="200">
-									<c:body content-type="application/xml">
-										<html xmlns="http://www.w3.org/1999/xhtml">
-											<head>
-												<title>File Upload and Download</title>
-											</head>
-											<body>
-												<h1>File Upload and Download</h1>
-												<p>This is a test of uploading and downloading files.</p>
-												<p>This pipeline accepts an uploaded file and in response it returns the same file.</p>
-												<form action="upload-download/" method="post" enctype="multipart/form-data">
-													<div>
-														<input type="file" name="file-upload" value="File"/>
-														<button type="submit">Upload and download the file</button>
-													</div>
-												</form>
-											</body>
-										</html>
-									</c:body>
-								</c:response>
-								<c:request href="/xproc-z/data/x.xml" method="PUT">
-									<c:body content-type="application/xml">
-										<test/>
-									</c:body>
-								</c:request>
-								</wrapper>
+							<c:response status="200">
+								<c:body content-type="application/xml">
+									<html xmlns="http://www.w3.org/1999/xhtml">
+										<head>
+											<title>File Upload and Download</title>
+										</head>
+										<body>
+											<h1>File Upload and Download</h1>
+											<p>This is a test of uploading and downloading files.</p>
+											<p>This pipeline accepts an uploaded file and in response it returns the same file.</p>
+											<form action="request" method="post" enctype="multipart/form-data">
+												<div>
+													<input type="file" name="file-upload" value="File"/>
+													<button type="submit">Upload and download the file</button>
+												</div>
+											</form>
+										</body>
+									</html>
+								</c:body>
+							</c:response>
 						</p:inline>
 					</p:input>
 				</p:identity>
-				<p:for-each>
-					<p:iteration-source select="/wrapper/*"/>
-					<p:identity/>
-				</p:for-each>
 			</p:when>
 			<p:otherwise><!-- upload and download file -->
 				<p:xslt>
@@ -114,6 +104,7 @@
 						<p:inline>
 							<c:response status="200" xsl:version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 								<xsl:variable name="upload" select="/c:request/c:multipart/c:body[1]"/>
+								<c:header name="Server" value="XProc-Z"/>
 								<c:body>
 									<xsl:copy-of select="$upload/@*"/>
 									<xsl:if test="$upload/@disposition">
@@ -127,6 +118,9 @@
 						</p:inline>
 					</p:input>
 				</p:xslt>
+				<!--
+				<z:make-http-response/>
+				-->
 			</p:otherwise>
 		</p:choose>
 	</p:declare-step>

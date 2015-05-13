@@ -530,21 +530,39 @@ private class RunnablePipeline implements Runnable {
 	}
 	
 	// Read binary data from the input stream and return Base64 encoded text
+	// NB if base64-encoding is performed on successive chunks of binary data,
+	// those chunks must be multiples of 3 bytes long (except the last chunk which
+	// may be any length), otherwise a chunk whose size is not divisible by 3 will
+	// produce one or more "=" padding characters and prematurely terminate
+	// the stream of base64 digits.
 	private String readBinary(InputStream inputStream) 
 		throws IOException {
-		byte[] buffer = new byte[1024];
-		StringBuilder builder = new StringBuilder();
-		int bytesRead = inputStream.read(buffer, 0, buffer.length);
-		while (bytesRead > -1) {
-			byte[] readBuffer;
-			if (bytesRead == 1024) {
+		StringBuilder builder = new StringBuilder(2048);
+		byte[] buffer = new byte[3]; // buffer for 3 bytes of binary data 
+		byte[] readBuffer;
+		int bytesRead = 0;
+		do {
+			int firstByteRead = inputStream.read(buffer, 0, 1);
+			int secondByteRead = inputStream.read(buffer, 1, 1);
+			int thirdByteRead = inputStream.read(buffer, 2, 1);
+			if (thirdByteRead == 1) {
+				bytesRead = 3;
+			} else if (secondByteRead == 1) {
+				bytesRead = 2;
+			} else if (firstByteRead == 1) {
+				bytesRead = 1;
+			} else {
+				bytesRead = 0;
+			}
+			if (bytesRead == 3) {
 				readBuffer = buffer;
 			} else {
 				readBuffer = Arrays.copyOfRange(buffer, 0, bytesRead);
 			}
-			builder.append(Base64.encodeBase64String(readBuffer));
-			bytesRead = inputStream.read(buffer, 0, buffer.length);
-		}
+			if (bytesRead > 0) {
+				builder.append(Base64.encodeBase64String(readBuffer));
+			}
+		} while (bytesRead == 3);
 		return builder.toString();
 	}
 
