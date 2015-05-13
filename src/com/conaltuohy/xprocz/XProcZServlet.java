@@ -160,10 +160,17 @@ private class RunnablePipeline implements Runnable {
 };    
 
 	private void addParameter(String prefix, String xmlns, String localName, String value) {
-		QName name = new QName(prefix, xmlns, localName);
+		QName name = new QName(prefix, xmlns, purifyForXML(localName));
 		getServletContext().log("XProc-Z parameter <c:param name='" + name + "' value='" + value + "'/>");
-		parameters.put(name, value);
+		parameters.put(name, purifyForXML(value));
 	};
+	
+	/**
+	* Remove characters which are invalid or discouraged in XML
+	*/
+	private String purifyForXML(String text) {
+		return text.replaceAll("[^\\u0009\\u000a\\u000d\\u0020-\\ud7ff\\ue000-\\ufffd]", "");
+	}
 	
     public void init() throws ServletException {
 	getServletContext().log("XProc-Z initializing ...");
