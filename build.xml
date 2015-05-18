@@ -69,6 +69,9 @@
 		<copy todir="build/webapp/WEB-INF">
 			<fileset dir="etc"/>			
 		</copy>		
+		<copy todir="build/webapp/static">
+			<fileset dir="static"/>			
+		</copy>		
 		<copy todir="build/webapp/WEB-INF/lib">
 			<fileset dir="build/lib">
 				<include name="**/*.jar"/>

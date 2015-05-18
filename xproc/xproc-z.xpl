@@ -26,6 +26,7 @@
 	<p:import href="examples/echo.xpl"/>
 	<p:import href="examples/menu.xpl"/>
 	<p:import href="examples/file.xpl"/>
+	<p:import href="examples/feed-reader.xpl"/>
 	<!--
 	under development
 	<p:import href="test.xpl"/>
@@ -38,6 +39,9 @@
 	<p:choose>
 		<p:when test=" $relative-uri = '' ">
 			<ex:menu/>
+		</p:when>
+		<p:when test="starts-with($relative-uri, 'static/')">
+			<z:static/>
 		</p:when>
 		<p:when test="starts-with($relative-uri, 'echo/')">
 			<ex:echo/>

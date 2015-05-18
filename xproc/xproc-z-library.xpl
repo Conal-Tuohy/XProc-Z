@@ -1,5 +1,49 @@
 <p:library version="1.0" xmlns:p="http://www.w3.org/ns/xproc" xmlns:c="http://www.w3.org/ns/xproc-step" xmlns:z="https://github.com/Conal-Tuohy/XProc-Z" xmlns:fn="http://www.w3.org/2005/xpath-functions">
 	
+	<!-- serve static resources from inside the "static" folder-->
+	<p:pipeline type="z:static">
+		<z:parse-request-uri/>
+		<p:template name="request-spec">
+			<p:input port="template">
+				<!-- sanitize path by removing ".." segments -->
+				<p:inline>
+					<c:request method="get" href="{
+						concat(
+							'../static/', 
+							substring-after(
+								replace(
+									/c:param-set/c:param[@name='path']/@value, 
+									'\.\.',
+									''
+								),
+								'/static/'
+							)
+						)
+					}"/>
+				</p:inline>
+			</p:input>
+		</p:template>
+		<p:try>
+			<p:group name="serve-file">
+				<p:http-request/>
+				<p:template name="http-response">
+					<p:input port="template">
+						<p:inline>
+							<c:response status="200">
+								<c:header name="X-Powered-By" value="XProc using XML Calabash"/>
+								<c:header name="Server" value="XProc-Z"/>
+								{/c:body}
+							</c:response>
+						</p:inline>
+					</p:input>
+				</p:template>
+			</p:group>
+			<p:catch name="not-found">
+				<z:not-found/>
+			</p:catch>
+		</p:try>
+	</p:pipeline>
+	
 	<p:pipeline type="z:parse-request-uri">
 		<p:xslt>
 			<p:input port="stylesheet">
@@ -9,7 +53,7 @@
 							<c:param-set>
 								<xsl:analyze-string 
 									select="/c:request/@href" 
-									regex="^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)(\?.*)$">
+									regex="^(.*:)//([^:/]+)(:[0-9]+)?(.*)(\?.*)?$">
 									<xsl:matching-substring>
 										<c:param name="scheme" value="{regex-group(1)}"/>
 										<c:param name="host" value="{regex-group(2)}"/>
