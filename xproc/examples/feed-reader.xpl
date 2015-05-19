@@ -56,9 +56,6 @@
 			<p:input port="stylesheet">
 				<p:inline>
 					<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns="http://www.w3.org/1999/xhtml">
-						<xsl:template match="/*">
-							<xsl:copy-of select="."/>
-						</xsl:template>
 						<xsl:template match="/rss">
 							<div class="transcluded-feed">
 								<xsl:for-each select="channel">
