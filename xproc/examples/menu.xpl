@@ -23,6 +23,7 @@
 									<title>XProc-Z Samples</title>
 									<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Open+Sans"/>
 									<link rel="stylesheet" type="text/css" href="static/sample.css"/>
+									<link rel="icon" type="image/png" href="static/xproc-z-logo.png"/>
 								</head>
 								<body>
 									<h1>XProc-Z Samples</h1>
