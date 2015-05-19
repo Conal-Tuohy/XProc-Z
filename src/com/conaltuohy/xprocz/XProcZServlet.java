@@ -12,6 +12,8 @@ import java.util.Date;
 import java.util.TimeZone;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Enumeration;
+import java.util.Properties;
 
 
 import org.apache.commons.codec.binary.Base64;
@@ -75,6 +77,7 @@ public class XProcZServlet extends HttpServlet {
 	private static final String SERVLET_INIT_PARAMETERS_NS = "tag:conaltuohy.com,2015:servlet-init-parameters";
 	private static final String APPLICATION_INIT_PARAMETERS_NS = "tag:conaltuohy.com,2015:webapp-init-parameters";
 	private static final String OS_ENVIRONMENT_VARIABLES_NS = "tag:conaltuohy.com,2015:os-environment-variables";
+	private static final String JAVA_SYSTEM_PROPERTIES_NS = "tag:conaltuohy.com,2015:java-system-properties";
 	
 	private static final String XPROC_STEP_NS = "http://www.w3.org/ns/xproc-step";
 	
@@ -193,7 +196,15 @@ private class RunnablePipeline implements Runnable {
 		// The Operating System's environment variables, 
 		for (Map.Entry<String, String> entry: System.getenv().entrySet()) {
 			addParameter("os", OS_ENVIRONMENT_VARIABLES_NS, entry.getKey(), entry.getValue());
-		}			
+		}	
+
+		// Java System Properties
+		Properties systemProperties = System.getProperties();
+		Enumeration systemPropertyNames = systemProperties.propertyNames();
+		while (systemPropertyNames.hasMoreElements()) {
+			String key = (String) systemPropertyNames.nextElement();
+			addParameter("jvm", JAVA_SYSTEM_PROPERTIES_NS, key, systemProperties.getProperty(key));
+		}
 		getServletContext().log("XProc-Z initialization completed successfully.");
     	 } catch (ParserConfigurationException pce) {
     	 	 // should not happen as support for FEATURE_SECURE_PROCESSING is mandatory
