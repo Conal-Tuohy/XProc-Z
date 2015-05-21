@@ -28,9 +28,12 @@
 	<p:import href="examples/file.xpl"/>
 	<p:import href="examples/feed-reader.xpl"/>
 	<!--
+	<p:import href="oai-harvest.xpl"/>
+	-->
+	<p:import href="visualize-collation/visualize-collation.xpl"/>
+	<!--
 	under development
 	<p:import href="test.xpl"/>
-	<p:import href="oai-harvest.xpl"/>
 	-->
 	
 	<p:variable name="relative-uri" select="substring-after(/c:request/@href, '/xproc-z/')"/>
@@ -49,11 +52,21 @@
 		<p:when test="starts-with($relative-uri, 'tei-viz/')">
 			<v:visualize-distribution xmlns:v="https://github.com/leoba/distributionVis"/>
 		</p:when>
+		<p:when test="starts-with($relative-uri, 'visualize-collation/')">
+			<vc:visualize-collation xmlns:vc="https://github.com/leoba/VisColl"/>
+		</p:when>
 		<p:when test="starts-with($relative-uri, 'upload-download/')">
 			<ex:file-upload-and-download>
 				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'upload-download/')"/>
 			</ex:file-upload-and-download>
 		</p:when>
+		<!--
+		<p:when test="starts-with($relative-uri, 'oai-harvest/')">
+			<oai:harvester xmlns:oai="tag:conaltuohy.com,2014:oai-harvest">
+				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'oai-harvest/')"/>
+			</oai:harvester>
+		</p:when>
+		-->
 		<!--
 		<p:when test="starts-with($relative-uri, 'form-test/')">
 			<z:form-test/>
@@ -62,12 +75,6 @@
 			<ex:data>
 				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'data/')"/>
 			</ex:data>
-		</p:when>
-		<p:when test="starts-with($relative-uri, 'oai-harvest/')">
-			<oai:harvester xmlns:oai="tag:conaltuohy.com,2014:oai-harvest">
-				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'oai-harvest/')"/>
-				<p:with-option name="directory" select=" '/var/lib/xproc-z/oai-harvester/subscriptions' "/>
-			</oai:harvester>
 		</p:when>-->
 		<p:otherwise>
 			<z:not-found/>
