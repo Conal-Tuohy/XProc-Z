@@ -245,7 +245,7 @@ private class RunnablePipeline implements Runnable {
 				c:body)?)
 		</request>
 		*/
-			Element request = requestXML.createElementNS(XPROC_STEP_NS, "request");
+			Element request = requestXML.createElementNS(XPROC_STEP_NS, "c:request");
 			requestXML.appendChild(request);
 			String queryString = req.getQueryString();
 			String requestURI = req.getRequestURL().toString();
@@ -266,7 +266,7 @@ private class RunnablePipeline implements Runnable {
 			
 			// the HTTP request headers
 			for (String name : Collections.list(req.getHeaderNames())) {	
-				Element header = requestXML.createElementNS(XPROC_STEP_NS, "header");
+				Element header = requestXML.createElementNS(XPROC_STEP_NS, "c:header");
 				request.appendChild(header);
 				header.setAttribute("name", name);
 				header.setAttribute("value", req.getHeader(name));
@@ -279,13 +279,13 @@ private class RunnablePipeline implements Runnable {
 				// content is multipart
 				// create c:multipart
 				String boundary = req.getContentType().substring("multipart/form-data; boundary=".length());
-				Element multipart = requestXML.createElementNS(XPROC_STEP_NS, "multipart");
+				Element multipart = requestXML.createElementNS(XPROC_STEP_NS, "c:multipart");
 				multipart.setAttribute("content-type", req.getContentType());
 				request.appendChild(multipart);
 				multipart.setAttribute("boundary", boundary); 
 				// for each part, create a c:body
 				for (Part part: req.getParts()) {
-					Element body = requestXML.createElementNS(XPROC_STEP_NS, "body");
+					Element body = requestXML.createElementNS(XPROC_STEP_NS, "c:body");
 					multipart.appendChild(body);			
 					String partContentType = part.getContentType();
 					if (partContentType == null) {
@@ -340,7 +340,7 @@ private class RunnablePipeline implements Runnable {
 			} else {
 				// content is simple
 				// create c:body element
-				Element body = requestXML.createElementNS(XPROC_STEP_NS, "body");
+				Element body = requestXML.createElementNS(XPROC_STEP_NS, "c:body");
 				request.appendChild(body);
 				body.setAttribute("content-type", req.getContentType());
 				String contentType = req.getContentType();
