@@ -21,12 +21,12 @@
 			</p:when>
 			<p:otherwise>
 				<!-- User uploaded files - process and return them -->
-				<p:for-each name="collation-model">
-					<!-- 
-						The manuscript is the content of the /c:request/c:multipart/c:body 
-						whose @disposition starts with 'form-data; name="collation-model"' 
-					-->
-					<p:iteration-source select="
+				<!-- 
+					The manuscript is the content of the /c:request/c:multipart/c:body 
+					whose @disposition starts with 'form-data; name="collation-model"' 
+				-->
+				<p:identity name="collation-model">
+					<p:input port="source" select="
 						/c:request/c:multipart/c:body[
 							starts-with(
 								@disposition,
@@ -37,59 +37,91 @@
 									codepoints-to-string(34)
 								)
 							)
-						]/manuscript
-					"/>
-					<!-- process the manuscript -->
-					<!--
-					process4 stylesheet triggers a type conversion error - hmmm
-					<vc:transform xslt="process4.xsl"/>
-					<vc:transform xslt="process5.xsl"/>
-					-->
-					<!-- for now, don't transform the collation-model; just copy it -->
-					<p:identity/>
-					
-				</p:for-each>
+						]
+						/*
+					">
+						<p:pipe port="source" step="visualize-collation"/>
+					</p:input>
+				</p:identity>
+				<!-- process the manuscript -->
+				<vc:transform xslt="process4.xsl"/>
+				<vc:transform xslt="process5.xsl" name="process5"/>
+
 				<!-- now what? -->
-				<!-- merge the transformed collation-model and the spreadsheet into a single
+				<!-- merge the transformed collation-model and the spreadsheet into a single				
 				document and pass it to the resulting couple of transforms -->
-				<!-- finally zip up the sequence of documents output from the final transform
-				into a temporary zip file, then open the zip file and send it to the user  -->
-				<!--
-				<p:for-each name="image-list">
-					<p:iteration-source select="
+				<p:identity name="image-list">
+					<p:input port="source" select="
 						/c:request/c:multipart/c:body[
 							starts-with(
 								@disposition,
 								concat(
 									'form-data; name=',
 									codepoints-to-string(34),
-									'collation-model',
+									'image-list',
 									codepoints-to-string(34)
 								)
 							)
-						]/manuscript
-					"/>
+						]
+						/*
+					">
+						<p:pipe port="source" step="visualize-collation"/>
+					</p:input>
+				</p:identity>
+				<p:wrap-sequence wrapper="manuscript-and-images">
+					<p:input port="source">
+						<p:pipe step="process5" port="result"/>
+						<p:pipe step="image-list" port="result"/>
+					</p:input>
+				</p:wrap-sequence>
+				<vc:transform xslt="process6-excel.xsl"/>
+				
+				<!-- TODO finally execute the final transform process7, 
+				zip up (into a temporary file) the sequence of "secondary" documents which it outputs
+				then read the zip file back in, and send it to the user  -->
+				<!--
+				<vc:transform xslt="process7.xsl" name="process7"/>
+				<p:for-each>
+					<p:iteration-source>
+						<p:pipe step="process7" port="secondary"/>
+					</p:iteration-source>
 				</p:for-each>
 				-->
-				
+				<p:xslt name="process7">
+					<p:input port="stylesheet">
+						<p:document href="process7.xsl"/>
+					</p:input>
+				</p:xslt>
+				<p:wrap-sequence wrapper="output-files">
+					<p:input port="source">
+						<p:pipe step="process7" port="secondary"/>
+					</p:input>
+				</p:wrap-sequence>
 				<z:make-http-response/>
 			</p:otherwise>
 		</p:choose>
 	</p:declare-step>
 	
+	<!-- shorthand for executing an XSLT  -->
 	<p:declare-step type="vc:transform" name="transform">
+		
 		<p:input port="source"/>
-		<p:output port="result"/>
+		<p:output port="result" primary="true"/>
 		<p:input port="parameters" kind="parameter"/>
+		
 		<p:option name="xslt" required="true"/>
-		<p:load name="stylesheet">
+		
+		<p:load name="load-stylesheet">
 			<p:with-option name="href" select="$xslt"/>
 		</p:load>
-		<p:xslt>
+		
+		<p:xslt name="execute-xslt">
+			<p:input port="source">
+				<p:pipe step="transform" port="source"/>
+			</p:input>
 			<p:input port="stylesheet">
-				<p:pipe step="stylesheet" port="result"/>
+				<p:pipe step="load-stylesheet" port="result"/>
 			</p:input>
 		</p:xslt>
 	</p:declare-step>
-
 </p:library>

@@ -12,9 +12,11 @@
             <xd:p><xd:b>Author:</xd:b> Dot Porter</xd:p>
             <xd:p><xd:b>Modified on:</xd:b>May 5, 2015</xd:p>
             <xd:p><xd:b>Modified by:</xd:b> Dot Porter</xd:p>
-            <xd:p>This document takes as its input the output from process5.xsl. It pulls image file
-                URLs from an external XML file (saved from Microsoft Excel and named
-                @idno-imageList.xml) up into <left/> and <right/>. </xd:p>
+            <xd:p><xd:b>Modified on:</xd:b>May 21, 2015</xd:p>
+            <xd:p><xd:b>Modified by:</xd:b> Conal</xd:p>
+            <xd:p>This document takes as its input the output from process5.xsl, merged with the
+            	image list file and wrapped in a <manuscript-and-images/> element. It pulls image file
+                URLs from the image list file (saved from Microsoft Excel) up into <left/> and <right/>. </xd:p>
         </xd:desc>
     </xd:doc>
 
@@ -24,7 +26,14 @@
         </xsl:copy>
     </xsl:template>
 
-    <xsl:variable name="idno" select="manuscript/@idno"/>
+    <xsl:variable name="idno" select="$manuscript/@idno"/>
+    
+    <xsl:variable name="image-list-spreadsheet" select="/manuscript-and-images/ss:Workbook"/>
+    <xsl:variable name="manuscript" select="/manuscript-and-images/manuscript"/>
+    
+    <xsl:template match="manuscript-and-images">
+    	<xsl:apply-templates select="manuscript"/>
+    </xsl:template>
 
     <xsl:template match="manuscript">
         <manuscript idno="{$idno}" msname="{@msname}" msURL="{@msURL}">
@@ -83,12 +92,12 @@
             <xsl:variable name="the_folNo">
                 <xsl:value-of select="@folNo"/>
             </xsl:variable>
-            <xsl:if test="document(concat('../',$idno,'-imageList.xml'))//ss:Row/ss:Cell/ss:Data/$the_folNo"> <!--test="ancestor::quires/tei:facsimile/tei:surface[@n=$the_folNo]"-->
+            <xsl:if test="$image-list-spreadsheet//ss:Row/ss:Cell/ss:Data/$the_folNo"> <!--test="ancestor::quires/tei:facsimile/tei:surface[@n=$the_folNo]"-->
                 <xsl:attribute name="url">
                     <!--<xsl:value-of
                         select="document(concat($idno,'-imageList.xml'))//ss:Row/ss:Cell/ss:Data/$the_folNo/../following-sibling::ss:Cell[1]/ss:Data[1]/text()"/>-->
                     <xsl:value-of
-                        select="document(concat('../',$idno,'-imageList.xml'))//ss:Row/ss:Cell/ss:Data[text()=$the_folNo]/../following-sibling::ss:Cell[1]/ss:Data[1]/text()"/>
+                        select="$image-list-spreadsheet//ss:Row/ss:Cell/ss:Data[text()=$the_folNo]/../following-sibling::ss:Cell[1]/ss:Data[1]/text()"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="@mode='missing'">
@@ -117,12 +126,12 @@
             <xsl:variable name="the_folNo">
                 <xsl:value-of select="@folNo"/>
             </xsl:variable>
-            <xsl:if test="document(concat('../',$idno,'-imageList.xml'))//ss:Row/ss:Cell/ss:Data/$the_folNo"> <!--test="ancestor::quires/tei:facsimile/tei:surface[@n=$the_folNo]"-->
+            <xsl:if test="$image-list-spreadsheet//ss:Row/ss:Cell/ss:Data/$the_folNo"> <!--test="ancestor::quires/tei:facsimile/tei:surface[@n=$the_folNo]"-->
                 <xsl:attribute name="url">
                     <!--<xsl:value-of
                         select="document(concat($idno,'-imageList.xml'))//ss:Row/ss:Cell/ss:Data/$the_folNo/../following-sibling::ss:Cell[1]/ss:Data[1]/text()"/>-->
                     <xsl:value-of
-                        select="document(concat('../',$idno,'-imageList.xml'))//ss:Row/ss:Cell/ss:Data[text()=$the_folNo]/../following-sibling::ss:Cell[1]/ss:Data[1]/text()"/>
+                        select="$image-list-spreadsheet//ss:Row/ss:Cell/ss:Data[text()=$the_folNo]/../following-sibling::ss:Cell[1]/ss:Data[1]/text()"/>
                 </xsl:attribute>
             </xsl:if>
             <xsl:if test="@mode='missing'">

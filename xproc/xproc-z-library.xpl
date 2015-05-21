@@ -294,5 +294,28 @@
 				<p:empty/>
 			</p:input>
 		</p:xslt>
-	</p:pipeline>
+	</p:pipeline>	
+	
+	<!-- shorthand for executing an XSLT  -->
+	<p:declare-step type="z:transform" name="transform">
+		
+		<p:input port="source"/>
+		<p:output port="result"/>
+		<p:input port="parameters" kind="parameter"/>
+		
+		<p:option name="xslt" required="true"/>
+		
+		<p:load name="load-stylesheet">
+			<p:with-option name="href" select="$xslt"/>
+		</p:load>
+		
+		<p:xslt name="execute-xslt">
+			<p:input port="source">
+				<p:pipe step="transform" port="source"/>
+			</p:input>
+			<p:input port="stylesheet">
+				<p:pipe step="load-stylesheet" port="result"/>
+			</p:input>
+		</p:xslt>
+	</p:declare-step>
 </p:library>
