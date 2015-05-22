@@ -76,6 +76,7 @@ public class XProcZServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final String SERVLET_INIT_PARAMETERS_NS = "tag:conaltuohy.com,2015:servlet-init-parameters";
 	private static final String APPLICATION_INIT_PARAMETERS_NS = "tag:conaltuohy.com,2015:webapp-init-parameters";
+	private static final String SERVLET_CONTEXT_NS = "tag:conaltuohy.com,2015:servlet-context";
 	private static final String OS_ENVIRONMENT_VARIABLES_NS = "tag:conaltuohy.com,2015:os-environment-variables";
 	private static final String JAVA_SYSTEM_PROPERTIES_NS = "tag:conaltuohy.com,2015:java-system-properties";
 	
@@ -205,6 +206,11 @@ private class RunnablePipeline implements Runnable {
 			String key = (String) systemPropertyNames.nextElement();
 			addParameter("jvm", JAVA_SYSTEM_PROPERTIES_NS, key, systemProperties.getProperty(key));
 		}
+		
+		// Servlet Context properties
+		addParameter("sc", SERVLET_CONTEXT_NS, "contextPath", getServletContext().getContextPath());
+		addParameter("sc", SERVLET_CONTEXT_NS, "realPath", getServletContext().getRealPath(""));
+		
 		getServletContext().log("XProc-Z initialization completed successfully.");
     	 } catch (ParserConfigurationException pce) {
     	 	 // should not happen as support for FEATURE_SECURE_PROCESSING is mandatory
