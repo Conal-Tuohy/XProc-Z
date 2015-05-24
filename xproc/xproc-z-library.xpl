@@ -32,6 +32,7 @@
 							<c:response status="200">
 								<c:header name="X-Powered-By" value="XProc using XML Calabash"/>
 								<c:header name="Server" value="XProc-Z"/>
+								<c:header name="Cache-Control" value="max-age=3600"/>
 								{/c:body}
 							</c:response>
 						</p:inline>
