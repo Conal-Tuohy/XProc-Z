@@ -369,7 +369,7 @@
 				concat(
 					'file:', 
 					/c:param-set/c:param[@name='realPath'][@namespace='tag:conaltuohy.com,2015:servlet-context']/@value,
-					'/VisColl.zip'
+					'/zip-sequence.zip'
 				)
 			">
 				<p:pipe step="global-parameters" port="result"/>
