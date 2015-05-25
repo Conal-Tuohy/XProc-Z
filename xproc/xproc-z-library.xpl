@@ -319,4 +319,84 @@
 			</p:input>
 		</p:xslt>
 	</p:declare-step>
+	
+	<p:declare-step type="z:get-file-upload" name="get-file-upload">
+		<p:input port="source"/>
+		<p:output port="result"/>
+		<p:option name="field-name" required="true"/>
+		<p:filter>
+			<p:with-option name="select" select="
+				concat(
+					'/c:request/c:multipart/c:body[starts-with(@disposition,',
+					codepoints-to-string(39),
+					'form-data; name=',
+					codepoints-to-string(34),
+					$field-name,
+					codepoints-to-string(34),
+					codepoints-to-string(39),
+					')]/*'
+				)
+			"/>	
+		</p:filter>
+	</p:declare-step>
+
+	<p:declare-step type="z:zip-sequence" name="zip-sequence">
+		<p:input port="source" sequence="true"/>
+		<p:output port="result"/>
+		<p:input port="parameters" kind="parameter"/>
+		<!-- create a zip manifest  -->
+		<!-- convert each document in the sequence into a c:entry of a c:zip-manifest -->
+		<p:for-each>
+			<p:template>
+				<p:input port="template">
+					<p:inline>
+						<c:entry name="{substring-after(base-uri(), 'file:/')}" href="{base-uri()}"/>
+					</p:inline>
+				</p:input>
+			</p:template>
+		</p:for-each>
+		<!-- wrap entries into a manifest -->
+		<p:wrap-sequence wrapper="c:zip-manifest" name="manifest"/>
+		<!-- get global parameters to find a safe place to write a temp file -->
+		<p:parameters name="global-parameters">
+			<p:input port="parameters">
+				<p:pipe step="zip-sequence" port="parameters"/>
+			</p:input>
+		</p:parameters>
+		<p:group>
+			<!-- We need an absolute URI for the temporary zip file, based on the "realPath" parameter -->
+			<p:variable name="zip-file-name" select="
+				concat(
+					'file:', 
+					/c:param-set/c:param[@name='realPath'][@namespace='tag:conaltuohy.com,2015:servlet-context']/@value,
+					'/VisColl.zip'
+				)
+			">
+				<p:pipe step="global-parameters" port="result"/>
+			</p:variable>
+			<!-- zip up the sequence of documents according to the manifest and stash it in the temporary file -->
+			<zip name="zip" xmlns="http://exproc.org/proposed/steps">
+				<p:with-option name="href" select="$zip-file-name"/>
+				<p:input port="source">
+					<p:pipe step="zip-sequence" port="source"/>
+				</p:input>
+				<p:input port="manifest">
+					<p:pipe step="manifest" port="result"/>
+				</p:input>
+			</zip>
+			<!-- create a request document to read the temporary file back in -->
+			<p:identity>
+				<p:input port="source">
+					<p:inline>
+						<c:request method="get"/>
+					</p:inline>
+				</p:input>
+			</p:identity>
+			<p:add-attribute match="/c:request" attribute-name="href">
+				<p:with-option name="attribute-value" select="$zip-file-name"/>
+			</p:add-attribute>
+			<!-- Read ZIP file back in. NB explicit dependency on preceding step -->
+			<p:http-request cx:depends-on="zip" xmlns:cx="http://xmlcalabash.com/ns/extensions"/>
+		</p:group>
+	</p:declare-step>
 </p:library>
