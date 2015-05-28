@@ -36,7 +36,7 @@
 	<p:import href="xproc-z-library.xpl"/>
 	<p:pipeline type="oai:harvester" name="main">
 		<p:option name="relative-uri" required="true"/>
-		<p:option name="directory" required="true"/>
+		<p:variable name="directory" select=" '../WEB-INF/oai' "/>
 		<p:choose>
 			<p:when test="$relative-uri = 'subscription/'">
 				<!-- the collection of subscriptions -->
@@ -60,26 +60,10 @@
 			<p:when test="starts-with($relative-uri, 'subscription/')">
 				<!-- an existing subscription -->
 				<p:variable name="file-name" select="substring-after($relative-uri, 'subscription/')"/><!-- QAZ sanitize -->
-				<p:choose>
-					<p:when test="/c:request/@method='GET'">
-						<!-- view an existing subscription -->
-						<oai:show-subscription>
-							<p:with-option name="directory" select="$directory"/>
-							<p:with-option name="file-name" select="$file-name"/>
-						</oai:show-subscription>
-					</p:when>
-					<p:when test="/c:request/@method='POST'">
-						<!-- update an existing subscription -->
-						<oai:update-subscription>
-							<p:with-option name="directory" select="$directory"/>
-							<p:with-option name="file-name" select="$file-name"/>
-						</oai:update-subscription>
-					</p:when>
-					<!-- QAZ allow DELETE and PUT -->
-					<p:otherwise>
-						<oai:method-not-allowed/>
-					</p:otherwise>
-				</p:choose>
+				<oai:subscription>
+					<p:with-option name="directory" select="$directory"/>
+					<p:with-option name="file-name" select="$file-name"/>
+				</oai:subscription>
 			</p:when>
 			<p:when test="$relative-uri = ''">
 				<oai:home-page/>
@@ -277,33 +261,156 @@
 	
 	
 
-	<p:pipeline type="oai:show-subscription" name="show-subscription">
+	<p:pipeline type="oai:subscription" name="subscription">
 		<p:option name="directory"/>
 		<p:option name="file-name"/>
-		<!-- TODO -->
+		<p:choose>
+			<p:when test="/c:request/@method='GET'">
+				<p:try name="load-existing-data">
+					<p:group>
+						<p:load>
+							<p:with-option name="href" select="concat($directory, '/', $file-name)"/>
+						</p:load>
+					</p:group>
+					<p:catch name="no-existing-data">
+						<p:identity name="new-blank-subscription">
+							<p:input port="source">
+								<p:inline exclude-inline-prefixes="#all">
+									<subscription xmlns="tag:conaltuohy.com,2014:oai-harvest">
+										<name>Untitled Subscription</name>
+									</subscription>
+								</p:inline>
+							</p:input>
+						</p:identity>
+					</p:catch>
+				</p:try>
+				<oai:render-subscription-form/>
+			</p:when>
+			<p:when test="/c:request/@method='POST'">
+				<!-- save subscription details -->
+				<!-- parse the HTML form fields -->
+				<p:www-form-urldecode name="posted-data">
+					<p:with-option name="value" select="/c:request/c:body"/>
+				</p:www-form-urldecode>
+				<p:choose>
+					<p:when test="/c:param-set/c:param[@name='delete']">
+						<pxf:delete xmlns:pxf="http://exproc.org/proposed/steps/file" fail-on-error="false">
+							<p:with-option name="href" select="concat($directory, '/', $file-name)"/>
+						</pxf:delete>
+						<z:make-http-response>
+							<p:input port="source">
+								<p:inline>
+									<html xmlns="http://www.w3.org/1999/xhtml">
+										<head>
+											<title>Subscription Deleted</title>
+										</head>
+										<body>
+											<h1>Subscription Deleted</h1>
+											<p><a href="..">View subscriptions</a></p>
+										</body>
+									</html>
+								</p:inline>
+							</p:input>
+						</z:make-http-response>
+					</p:when>
+					<p:otherwise><!-- submitted by "save" button - save the data -->
+						<p:xslt name="convert-posted-data-to-persistent-form">
+							<p:input port="parameters">
+								<p:pipe step="posted-data" port="result"/>
+							</p:input>
+							<p:input port="source">
+								<p:pipe step="posted-data" port="result"/>
+							</p:input>
+							<p:input port="stylesheet">
+								<p:inline exclude-inline-prefixes="z oai fn">
+									<!-- this simple stylesheet handles a flat namespace of single-valued properties -->
+									<xsl:stylesheet version="2.0" 
+										xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+										xmlns:c="http://www.w3.org/ns/xproc-step"
+										xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+										exclude-result-prefixes="c xs">
+										<xsl:template match="/c:param-set">
+											<subscription xmlns="tag:conaltuohy.com,2014:oai-harvest">
+												<xsl:apply-templates/>
+											</subscription>
+										</xsl:template>
+										<!-- no need to save the save command itself -->
+										<xsl:template match="c:param[@name='save']"/>
+										<xsl:template match="c:param">
+											<xsl:element name="{@name}" namespace="tag:conaltuohy.com,2014:oai-harvest">
+												<xsl:value-of select="@value"/>
+											</xsl:element>
+										</xsl:template>
+									</xsl:stylesheet>
+								</p:inline>
+							</p:input>
+						</p:xslt>
+						<p:store>
+							<p:with-option name="href" select="concat($directory, '/', $file-name)"/>
+						</p:store>
+						<!-- render the data in an HTML form -->
+						<oai:render-subscription-form>
+							<p:input port="source">
+								<p:pipe step="convert-posted-data-to-persistent-form" port="result"/>
+							</p:input>
+						</oai:render-subscription-form>
+					</p:otherwise>
+				</p:choose>
+			</p:when>
+			<p:otherwise>
+				<oai:method-not-allowed/>
+			</p:otherwise>
+		</p:choose>
+	</p:pipeline>
+	
+	<p:pipeline type="oai:render-subscription-form" name="render-subscription-form">
+		<!-- display subscription in HTML form-->
+		<p:template>
+			<p:input port="parameters">
+				<p:empty/>
+			</p:input>
+			<p:input port="template">
+				<p:inline>
+					<html xmlns="http://www.w3.org/1999/xhtml">
+						<head>
+							<title>{/oai:subscription/oai:name/text()}</title>
+						</head>
+						<body>
+							<h1>{/oai:subscription/oai:name/text()}</h1>
+							<form method="POST" action="#">
+								<p>
+									<label for="name">Name</label>
+									<input id="name" name="name" type="text" value="{/oai:subscription/oai:name/text()}"/>
+								</p>
+								<input type="submit" name="save" value="Save"/>
+								<input type="submit" name="delete" value="Delete"/>
+							</form>
+						</body>
+					</html>
+				</p:inline>
+			</p:input>
+		</p:template>
 		<oai:http-respond/>
 	</p:pipeline>
 	
-	<p:pipeline type="oai:update-subscription" name="update-subscription">
-		<p:option name="directory"/>
-		<p:option name="file-name"/>
-		<!-- TODO -->
-		<oai:http-respond/>
-	</p:pipeline>
 	
 	<p:pipeline type="oai:list-subscriptions" name="list-subscriptions">
-		<p:option name="directory"/>
-		<p:directory-list include-filter=".*\.xml^">
+		<p:option name="directory" required="true"/>
+		<p:directory-list include-filter="[^\.]*\.xml">
 			<p:with-option name="path" select="$directory"/>
 		</p:directory-list>
 		<p:viewport name="subscriptions" match="//c:file">
-			<p:variable name="filename" select="/c:file/@name"/>
 			<p:load name="subscription">
-				<p:with-option name="href" select="concat($path, '/', $filename)"/>
+				<p:with-option name="href" select="resolve-uri(/c:file/@name, base-uri(/c:file))"/>
 			</p:load>
-			<p:add-attribute match="oai:subscription" attribute-name="href">
-				<p:with-option name="attribute-value" select="$filename"/>
-			</p:add-attribute>
+			<p:insert position="first-child">
+				<p:input port="source">
+					<p:pipe step="subscriptions" port="current"/>
+				</p:input>
+				<p:input port="insertion">
+					<p:pipe step="subscription" port="result"/>
+				</p:input>
+			</p:insert>
 		</p:viewport>
 		<oai:http-respond/>
 	</p:pipeline>
