@@ -1,4 +1,5 @@
 <p:library version="1.0" xmlns:p="http://www.w3.org/ns/xproc" xmlns:c="http://www.w3.org/ns/xproc-step" xmlns:z="https://github.com/Conal-Tuohy/XProc-Z" xmlns:fn="http://www.w3.org/2005/xpath-functions">
+	<p:import href="http://xmlcalabash.com/extension/steps/library-1.0.xpl"/>
 	
 	<!-- serve static resources from inside the "static" folder-->
 	<p:pipeline type="z:static">
