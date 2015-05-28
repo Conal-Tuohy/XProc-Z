@@ -395,10 +395,19 @@ private class RunnablePipeline implements Runnable {
 			XdmNode rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD, responseName).next();
 			String statusAttribute = rootElement.getAttributeValue( new QName("status"));
 			resp.setStatus(Integer.valueOf(statusAttribute));
+			QName headerName = new QName(XPROC_STEP_NS, "header");
+			XdmSequenceIterator headers = rootElement.axisIterator(Axis.CHILD, headerName);
+			QName nameName = new QName("name");
+			QName valueName = new QName("value");
+			while (headers.hasNext()) {
+				XdmNode headerNode = (XdmNode) headers.next();
+				resp.addHeader(headerNode.getAttributeValue(nameName), headerNode.getAttributeValue(valueName));
+			}
 			QName bodyName = new QName(XPROC_STEP_NS, "body");
-			XdmNode bodyElement = (XdmNode) rootElement.axisIterator(Axis.CHILD, bodyName).next();
-			if (bodyElement != null) {
+			XdmSequenceIterator bodyIterator = rootElement.axisIterator(Axis.CHILD, bodyName);
+			if (bodyIterator.hasNext()) {
 				// there is an entity body to return
+				XdmNode bodyElement = (XdmNode) bodyIterator.next();
 				String encoding = bodyElement.getAttributeValue( new QName("encoding") );
 				String contentType = bodyElement.getAttributeValue( new QName ("content-type") );
 				String contentDisposition = bodyElement.getAttributeValue( new QName ("disposition") );
@@ -407,14 +416,6 @@ private class RunnablePipeline implements Runnable {
 				}
 				XdmSequenceIterator content = bodyElement.axisIterator(Axis.CHILD);
 				resp.setContentType(contentType);
-				QName headerName = new QName(XPROC_STEP_NS, "header");
-				XdmSequenceIterator headers = rootElement.axisIterator(Axis.CHILD, headerName);
-				QName nameName = new QName("name");
-				QName valueName = new QName("value");
-				while (headers.hasNext()) {
-					XdmNode headerNode = (XdmNode) headers.next();
-					resp.addHeader(headerNode.getAttributeValue(nameName), headerNode.getAttributeValue(valueName));
-				}
 				if ("base64".equals(encoding)) {
 					// decode base64 encoded binary data and stream to http client
 					os.write(
