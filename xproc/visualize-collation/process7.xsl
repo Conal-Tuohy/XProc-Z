@@ -48,17 +48,17 @@
                         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
 
                         <!-- Add jQuery library -->
-                        <script type="text/javascript" src="https://cdn.rawgit.com/leoba/VisColl/master/data/support/fancybox/lib/jquery-1.10.1.min.js"/>
+                        <script type="text/javascript" src="https://cdn.rawgit.com/leoba/VisColl/master/data/support/fancybox/lib/jquery-1.10.1.min.js"></script>
 
                         <!-- Add fancyBox main JS and CSS files -->
-                        <script type="text/javascript" src="https://cdn.rawgit.com/leoba/VisColl/master/data/support/fancybox/source/jquery.fancybox.js?v=2.1.5"/>
+                        <script type="text/javascript" src="https://cdn.rawgit.com/leoba/VisColl/master/data/support/fancybox/source/jquery.fancybox.js?v=2.1.5"></script>
                         <link rel="stylesheet" type="text/css"
                             href="https://cdn.rawgit.com/leoba/VisColl/master/data/support/fancybox/source/jquery.fancybox.css?v=2.1.5" media="screen"/>
                         <link href="https://cdn.rawgit.com/leoba/VisColl/master/data/support/fancybox/source/jquery.fancybox.css" rel="stylesheet"
                             type="text/css"/>
-                        <script type="text/javascript" src="https://cdn.rawgit.com/leoba/VisColl/master/data/support/fancybox/source/iframescript.js"/>
+                        <script type="text/javascript" src="https://cdn.rawgit.com/leoba/VisColl/master/data/support/fancybox/source/iframescript.js"></script>
 
-                        <script type="text/javascript" src="https://cdn.rawgit.com/leoba/VisColl/master/data/support/fancybox/collation.js"/>
+                        <script type="text/javascript" src="https://cdn.rawgit.com/leoba/VisColl/master/data/support/fancybox/collation.js"></script>
                         <link href="https://cdn.rawgit.com/leoba/VisColl/master/data/support/css/collation.css" rel="stylesheet" type="text/css"/>
 
                     </head>
@@ -245,7 +245,9 @@
                             
                             <xsl:variable name="divsetNo" select="@n"/>
                             
-                            <div class="bititles">Quire
+                            <xsl:comment> If you would like to include the ability to show and hide quires, uncommend the code below </xsl:comment>
+                            
+                            <xsl:comment><div class="bititles">Quire
                                     <xsl:value-of select="$quireNo"/>, Unit <xsl:value-of
                                     select="$leftFol"/>, <xsl:value-of select="$rightFol"/>
                                 <xsl:text> </xsl:text><xsl:text> </xsl:text><a href="#"
@@ -254,7 +256,8 @@
                                     href="#"
                                     onclick="MM_changeProp('divset{$divsetNo}','','height','0px','DIV')"><img
                                         src="https://cdn.rawgit.com/leoba/VisColl/master/data/support/images/close.gif" alt="Close" class="closeimage"
-                                /></a></div>
+                                /></a></div></xsl:comment>
+                            <br/>
                             <div>
                                 <xsl:attribute name="id">divset<xsl:value-of select="$divsetNo"
                                     /></xsl:attribute>
