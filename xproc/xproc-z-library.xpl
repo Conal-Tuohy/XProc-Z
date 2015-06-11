@@ -376,7 +376,7 @@
 				<p:pipe step="global-parameters" port="result"/>
 			</p:variable>
 			<!-- zip up the sequence of documents according to the manifest and stash it in the temporary file -->
-			<zip name="zip" xmlns="http://exproc.org/proposed/steps">
+			<zip name="zip" xmlns="http://exproc.org/proposed/steps" command="create">
 				<p:with-option name="href" select="$zip-file-name"/>
 				<p:input port="source">
 					<p:pipe step="zip-sequence" port="source"/>
