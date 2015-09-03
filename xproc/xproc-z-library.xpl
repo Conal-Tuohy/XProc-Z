@@ -47,19 +47,33 @@
 	</p:pipeline>
 	
 	<p:pipeline type="z:parse-request-uri">
+		<p:option name="unproxify" select=" 'false' "/>
 		<p:xslt>
+			<p:with-param name="unproxify" select="$unproxify"/>
 			<p:input port="stylesheet">
 				<p:inline>
 					<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:c="http://www.w3.org/ns/xproc-step">
+						<xsl:param name="unproxify"/>
+						<xsl:variable name="x-forwarded-host" select="/c:request/c:header[@name='x-forwarded-host']/@value"/>
 						<xsl:template match="/">
 							<c:param-set>
 								<xsl:analyze-string 
 									select="/c:request/@href" 
 									regex="^(.*:)//([^:/]+)(:[0-9]+)?(.*)(\?.*)?$">
+									<!-- TODO check above regex - is "[^:/]+" correct? -->
 									<xsl:matching-substring>
 										<c:param name="scheme" value="{regex-group(1)}"/>
-										<c:param name="host" value="{regex-group(2)}"/>
-										<c:param name="port" value="{regex-group(3)}"/>
+										<xsl:choose>
+											<xsl:when test="$unproxify='true' and $x-forwarded-host">
+												<c:param name="host" value="{$x-forwarded-host}"/>
+												<c:param name="port" value=""/>
+												<c:param name="unproxified" value="true"/>
+											</xsl:when>
+											<xsl:otherwise>
+												<c:param name="host" value="{regex-group(2)}"/>
+												<c:param name="port" value="{regex-group(3)}"/>
+											</xsl:otherwise>
+										</xsl:choose>
 										<c:param name="path" value="{regex-group(4)}"/>
 										<c:param name="query" value="{regex-group(5)}"/>
 									</xsl:matching-substring>
