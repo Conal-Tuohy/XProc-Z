@@ -5,6 +5,56 @@
 	xmlns:fn="http://www.w3.org/2005/xpath-functions">
 	
 	<p:import href="xproc-z-library.xpl"/>
+	
+	<p:declare-step type="z:xslt-safety-test" name="xslt-safety-test">
+		<p:input port="source"/>
+		<p:input port="parameters" kind="parameter"/>
+		<p:output port="result"/>
+		<p:xslt name="unsafe-xslt">
+			<p:input port="parameters">
+				<p:empty/>
+			</p:input>
+			<p:input port="source">
+				<p:pipe step="xslt-safety-test" port="source"/>
+			</p:input>
+			<p:input port="stylesheet">
+				<p:inline>
+					<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+						<xsl:template match="/">
+							<xsl:copy-of select="document('file:///var/lib/tomcat7/conf/tomcat-users.xml')"/>
+						</xsl:template>
+					</xsl:stylesheet>
+				</p:inline>
+			</p:input>
+		</p:xslt>
+		<z:make-http-response/>
+	</p:declare-step>
+	
+	<p:declare-step type="z:trampoline-test">
+		<p:input port="source"/>
+		<p:output port="result" sequence="true"/>
+		<p:identity>
+			<p:input port="source">
+				<p:inline>
+					<c:response status="200">
+						<c:body content-type="application/xhtml+xml">
+							<html xmlns="http://www.w3.org/1999/xhtml">
+								<head>
+									<title>Trampoline Test</title>
+								</head>
+								<body>
+									<h1>Trampoline Test</h1>
+								</body>
+							</html>
+						</c:body>
+					</c:response>
+				</p:inline>
+				<p:inline>
+					<c:request href="/xproc-z/" method="GET"/>
+				</p:inline>
+			</p:input>
+		</p:identity>
+	</p:declare-step>
 		
 	<p:pipeline type="z:form-test" name="form-test">
 		<p:variable name="current-time" select="current-dateTime() "/>

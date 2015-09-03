@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Enumeration;
 import java.util.Properties;
-
+import com.xmlcalabash.core.XProcException;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -484,7 +484,6 @@ private class RunnablePipeline implements Runnable {
 				writer.print(e.getLineNumber());
 				*/
 			}
-			//writer.println(pipelineFailed.getMessage());
 			pipelineFailed.printStackTrace(writer);
 			writer.flush();
 			os.close();	
