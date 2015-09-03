@@ -10,6 +10,12 @@
 		Resources:
 			"":
 				get an overview of the harvesting system
+			"transformation" - a collection of XSLT transforms
+			"transformation/{x}" - an XSLT transformation
+				- get a description of the transformation
+				- post an updated description and/or updated XSLT
+			"transformation/{x}/xslt" - the XSLT
+				- get the XSLT
 			"subscription" - a collection of OAI-PMH repository subscriptions
 				get a list of all the subscriptions
 				post a new subscription (html form encoded)
@@ -34,10 +40,34 @@
 	-->
 	
 	<p:import href="xproc-z-library.xpl"/>
-	<p:pipeline type="oai:harvester" name="main">
+	<p:declare-step type="oai:harvester" name="main">
+		<p:input port="source"/>
+		<p:input port="parameters" kind="parameter"/>
+		<p:output port="result" sequence="true"/>
 		<p:option name="relative-uri" required="true"/>
 		<p:variable name="directory" select=" '../WEB-INF/oai' "/>
 		<p:choose>
+			<p:when test="$relative-uri = 'transformation/'">
+				<!-- the collection of transformations -->
+				<p:choose>
+					<p:when test="/c:request/@method='GET'">
+						<oai:list-transformations>
+							<p:with-option name="directory" select="$directory"/>
+						</oai:list-transformations>
+					</p:when>
+						<!-- add a new transformation -->
+						<!--
+					<p:when test="/c:request/@method='POST'">
+						<oai:add-transformation>
+							<p:with-option name="directory" select="$directory"/>
+						</oai:add-tranformation>
+					</p:when>
+					-->
+					<p:otherwise>
+						<oai:method-not-allowed/>
+					</p:otherwise>
+				</p:choose>
+			</p:when>
 			<p:when test="$relative-uri = 'subscription/'">
 				<!-- the collection of subscriptions -->
 				<p:choose>
@@ -46,16 +76,26 @@
 							<p:with-option name="directory" select="$directory"/>
 						</oai:list-subscriptions>
 					</p:when>
-					<p:when test="/c:request/@method='POST'">
 						<!-- add a new subscription -->
+						<!--
+					<p:when test="/c:request/@method='POST'">
 						<oai:add-subscription>
 							<p:with-option name="directory" select="$directory"/>
 						</oai:add-subscription>
 					</p:when>
+					-->
 					<p:otherwise>
 						<oai:method-not-allowed/>
 					</p:otherwise>
 				</p:choose>
+			</p:when>
+			<p:when test="starts-with($relative-uri, 'transformation/')">
+				<!-- an existing transformation -->
+				<p:variable name="file-name" select="substring-after($relative-uri, 'subscription/')"/><!-- QAZ sanitize -->
+				<oai:transformation>
+					<p:with-option name="directory" select="$directory"/>
+					<p:with-option name="file-name" select="$file-name"/>
+				</oai:transformation>
 			</p:when>
 			<p:when test="starts-with($relative-uri, 'subscription/')">
 				<!-- an existing subscription -->
@@ -72,111 +112,22 @@
 				<oai:error status="400" title="Bad Request URI" message="The URI is not recognised"/>
 			</p:otherwise>
 		</p:choose>
-	</p:pipeline>
+	</p:declare-step>
 	
-	<p:pipeline type="oai:method-not-allowed" name="method-not-allowed">
-		<p:identity/>
-		<oai:http-respond/>
+	<p:declare-step type="oai:method-not-allowed" name="method-not-allowed">
+		<p:input port="source"/>
+		<p:output port="result"/>
 		<!--
+		<p:identity/>
+		<oai:http-respond/>		-->
 		<oai:error status="405" title="Method Not Allowed" message="The request method is not allowed"/>
-		-->
-	</p:pipeline>
+	</p:declare-step>
 	
-	<p:pipeline type="oai:add-subscription" name="add-subscription">
-		<!-- the directory in which the new subscription file will be saved -->
-		<p:option name="directory" required="true"/>
-		<!-- parse the posted data --><!-- TODO change to use p:www-form-urldecode -->
-		<z:parse-parameters name="post"/>
-		<!-- convert the HTTP POST data into the subscription format -->
-		<p:template name="convert-to-subscription">
-			<p:input port="template">
-				<p:inline>
-					<subscription>
-						<name>Untitled</name>
-						<metadata-prefix>oai_dc</metadata-prefix>
-						<base-url>{/c:multipart/c:part[@name='base-url']}</base-url>
-					</subscription>
-				</p:inline>
-			</p:input>
-			<!--
-			<p:input port="parameters">
-				<p:pipe step="variables" port="result"/>
-			</p:input>
-			-->
-		</p:template>
-		<!-- generate a name for the new file -->
-		<p:directory-list include-filter=".*\.xml$">
-			<p:with-option name="path" select="$directory"/>
-		</p:directory-list>
-		<!-- insert the "sentinel" file name '0.xml' so that if there are no actual files, then the new file will be called '1.xml' -->
-		<p:insert position="first-child">
-			<p:input port="insertion">
-				<p:inline>
-					<c:file name="0.xml"/>
-				</p:inline>
-			</p:input>
-		</p:insert>
-		<p:group>
-			<!-- find the highest numbered file so far and increment its name by 1 -->
-			<p:variable name="last-file-name" select="
-				/c:directory/c:file[
-					not(
-						(preceding-sibling::c:file/@name &gt; @name) or 
-						(following-sibling::c:file/@name &gt; @name)
-					)
-				]/@name
-			"/>
-			<p:variable name="new-file-name" select="
-				concat(
-					string(
-						number(
-							substring-before($last-file-name, '.xml')
-						) + 1
-					),
-					'.xml'
-				)
-			"/>
-			<!-- save it -->
-			<p:store>
-				<p:with-option name="href" select="concat($directory, '/', $new-file-name)"/>
-				<p:input port="source">
-					<p:pipe step="convert-to-subscription" port="result"/>
-				</p:input>
-			</p:store>
-			<!-- TODO generate and return a form representing the newly created resource -->
-			<p:in-scope-names name="variables"/>
-			<p:template name="new-subscription-form">
-				<p:input port="template">
-					<p:inline>
-						<c:response status="201">
-							<c:header name="X-Powered-By" value="XProc using XML Calabash"/>
-							<c:header name="Server" value="XProc-Z"/>
-							<c:header name="Location" value="{$new-file-name}"/>
-							<c:body content-type="application/xml">
-								<html xmlns="http://www.w3.org/1999/xhtml">
-									<head>
-										<title>New Subscription — OAI-PMH Harvester</title>
-									</head>
-									<body>
-										<h1>New Subscription — OAI-PMH Harvester</h1>
-										<p><a href="{$new-file-name}">{$new-file-name}</a></p>
-									</body>
-								</html>
-							</c:body>
-						</c:response>
-					</p:inline>		
-				</p:input>
-				<p:input port="source">
-					<p:empty/>
-				</p:input>
-				<p:input port="parameters">
-					<p:pipe step="variables" port="result"/>
-				</p:input>
-			</p:template>
-		</p:group>
-	</p:pipeline>
+
 	
-	<p:pipeline type="oai:home-page" name="home-page">
+	<p:declare-step type="oai:home-page" name="home-page">
+		<p:input port="source"/>
+		<p:output port="result"/>
 		<p:identity>
 			<p:input port="source">
 				<p:inline>
@@ -201,10 +152,12 @@
 			</p:input>
 		</p:identity>
 		<oai:http-respond/>
-	</p:pipeline>
+	</p:declare-step>
 	
 	<!-- output a response -->
-	<p:pipeline type="oai:http-respond" name="http-respond">
+	<p:declare-step type="oai:http-respond" name="http-respond">
+		<p:input port="source"/>
+		<p:output port="result"/>
 		<p:option name="status" select="200"/>
 		<p:option name="content-type" select="'application/xml'"/>
 		<p:in-scope-names name="options"/>
@@ -225,10 +178,12 @@
 				</p:inline>
 			</p:input>
 		</p:template>
-	</p:pipeline>
+	</p:declare-step>
 	
 	<!-- output an HTML page containing an error message -->
-	<p:pipeline type="oai:error" name="error">
+	<p:declare-step type="oai:error" name="error">
+		<p:input port="source"/>
+		<p:output port="result"/>
 		<p:option required="true" name="title"/>
 		<p:option required="true" name="message"/>
 		<p:option required="true" name="status"/>
@@ -257,103 +212,51 @@
 		<oai:http-respond>
 			<p:with-option name="status" select="$status"/>
 		</oai:http-respond>
-	</p:pipeline>
+	</p:declare-step>
 	
-	
-
-	<p:pipeline type="oai:subscription" name="subscription">
+	<p:declare-step type="oai:transformation" name="transformation">
+		<p:input port="source"/>
+		<p:output port="result" sequence="true"/>
 		<p:option name="directory"/>
 		<p:option name="file-name"/>
+		<p:variable name="transformation" select="concat($directory, '/', $file-name)"/>
 		<p:choose>
 			<p:when test="/c:request/@method='GET'">
 				<p:try name="load-existing-data">
 					<p:group>
 						<p:load>
-							<p:with-option name="href" select="concat($directory, '/', $file-name)"/>
+							<p:with-option name="href" select="$subscription"/>
 						</p:load>
+						<oai:render-transformation-form/>
 					</p:group>
-					<p:catch name="no-existing-data">
-						<p:identity name="new-blank-subscription">
-							<p:input port="source">
-								<p:inline exclude-inline-prefixes="#all">
-									<subscription xmlns="tag:conaltuohy.com,2014:oai-harvest">
-										<name>Untitled Subscription</name>
-									</subscription>
-								</p:inline>
-							</p:input>
-						</p:identity>
+					<p:catch>
+						<z:not-found/>
 					</p:catch>
 				</p:try>
-				<oai:render-subscription-form/>
 			</p:when>
 			<p:when test="/c:request/@method='POST'">
-				<!-- save subscription details -->
+				<!-- save transformation details -->
+				
 				<!-- parse the HTML form fields -->
+				<!-- www-form-urldecode fails to decode spaces encoded as "+" - is this a bug in Calabash? -->
+				<!-- http://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1 -->
+				<p:string-replace match="/c:request/c:body/text()" replace="replace(., '\+', '%20')"/>
 				<p:www-form-urldecode name="posted-data">
 					<p:with-option name="value" select="/c:request/c:body"/>
 				</p:www-form-urldecode>
+				
+				<!-- The web client has updated the transformation, by submitting one 
+				of the named "status" buttons to alter the transformation's overall state. -->
 				<p:choose>
-					<p:when test="/c:param-set/c:param[@name='delete']">
-						<pxf:delete xmlns:pxf="http://exproc.org/proposed/steps/file" fail-on-error="false">
-							<p:with-option name="href" select="concat($directory, '/', $file-name)"/>
-						</pxf:delete>
-						<z:make-http-response>
-							<p:input port="source">
-								<p:inline>
-									<html xmlns="http://www.w3.org/1999/xhtml">
-										<head>
-											<title>Subscription Deleted</title>
-										</head>
-										<body>
-											<h1>Subscription Deleted</h1>
-											<p><a href="..">View subscriptions</a></p>
-										</body>
-									</html>
-								</p:inline>
-							</p:input>
-						</z:make-http-response>
+					<p:when test="/c:param-set/c:param[@name='status']='deleted'">
+						<oai:delete-transformation>
+							<p:with-option name="transformation" select="$transformation"/>
+						</oai:delete-transformation>
 					</p:when>
-					<p:otherwise><!-- submitted by "save" button - save the data -->
-						<p:xslt name="convert-posted-data-to-persistent-form">
-							<p:input port="parameters">
-								<p:pipe step="posted-data" port="result"/>
-							</p:input>
-							<p:input port="source">
-								<p:pipe step="posted-data" port="result"/>
-							</p:input>
-							<p:input port="stylesheet">
-								<p:inline exclude-inline-prefixes="z oai fn">
-									<!-- this simple stylesheet handles a flat namespace of single-valued properties -->
-									<xsl:stylesheet version="2.0" 
-										xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-										xmlns:c="http://www.w3.org/ns/xproc-step"
-										xmlns:xs="http://www.w3.org/2001/XMLSchema" 
-										exclude-result-prefixes="c xs">
-										<xsl:template match="/c:param-set">
-											<subscription xmlns="tag:conaltuohy.com,2014:oai-harvest">
-												<xsl:apply-templates/>
-											</subscription>
-										</xsl:template>
-										<!-- no need to save the save command itself -->
-										<xsl:template match="c:param[@name='save']"/>
-										<xsl:template match="c:param">
-											<xsl:element name="{@name}" namespace="tag:conaltuohy.com,2014:oai-harvest">
-												<xsl:value-of select="@value"/>
-											</xsl:element>
-										</xsl:template>
-									</xsl:stylesheet>
-								</p:inline>
-							</p:input>
-						</p:xslt>
-						<p:store>
-							<p:with-option name="href" select="concat($directory, '/', $file-name)"/>
-						</p:store>
-						<!-- render the data in an HTML form -->
-						<oai:render-subscription-form>
-							<p:input port="source">
-								<p:pipe step="convert-posted-data-to-persistent-form" port="result"/>
-							</p:input>
-						</oai:render-subscription-form>
+					<p:otherwise>
+						<oai:save-transformation>
+							<p:with-option name="transformation" select="$transformation"/>
+						</oai:save-transformation>
 					</p:otherwise>
 				</p:choose>
 			</p:when>
@@ -361,40 +264,510 @@
 				<oai:method-not-allowed/>
 			</p:otherwise>
 		</p:choose>
-	</p:pipeline>
-	
-	<p:pipeline type="oai:render-subscription-form" name="render-subscription-form">
-		<!-- display subscription in HTML form-->
-		<p:template>
+	</p:declare-step>	
+
+	<p:declare-step type="oai:subscription" name="subscription">
+		<p:input port="source"/>
+		<p:output port="result" sequence="true"/>
+		<p:option name="directory"/>
+		<p:option name="file-name"/>
+		<p:variable name="subscription" select="concat($directory, '/', $file-name)"/>
+		<p:choose>
+			<p:when test="/c:request/@method='GET'">
+				<oai:load-subscription>
+					<p:with-option name="subscription" select="$subscription"/>
+				</oai:load-subscription>
+				<oai:render-subscription-form/>
+			</p:when>
+			<p:when test="/c:request/@method='POST'">
+				<!-- save subscription details -->
+				
+				<!-- parse the HTML form fields -->
+				<!-- www-form-urldecode fails to decode spaces encoded as "+" - is this a bug in Calabash? -->
+				<!-- http://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1 -->
+				<p:string-replace match="/c:request/c:body/text()" replace="replace(., '\+', '%20')"/>
+				<p:www-form-urldecode name="posted-data">
+					<p:with-option name="value" select="/c:request/c:body"/>
+				</p:www-form-urldecode>
+				
+				<!-- The web client has updated the subscription, by submitting one 
+				of the named "status" buttons to alter the subscription's overall state. -->
+				<p:choose>
+					<p:when test="/c:param-set/c:param[@name='status']='deleted'">
+						<oai:delete-subscription>
+							<p:with-option name="subscription" select="$subscription"/>
+						</oai:delete-subscription>
+					</p:when>
+					<p:otherwise>
+						<oai:save-subscription>
+							<p:with-option name="subscription" select="$subscription"/>
+						</oai:save-subscription>
+					</p:otherwise>
+				</p:choose>
+			</p:when>
+			<p:otherwise>
+				<oai:method-not-allowed/>
+			</p:otherwise>
+		</p:choose>
+	</p:declare-step>
+		
+	<p:declare-step type="oai:save-subscription" name="save-subscription">
+		<p:input port='source' primary='true'/>
+		<p:output port="result" primary="true" sequence="true"/>
+		<p:option name="subscription" required="true"/>
+		<oai:load-subscription name="existing-subscription">
+			<p:with-option name="subscription" select="$subscription"/>
+		</oai:load-subscription>
+		<p:xslt name="convert-posted-data-to-persistent-form">
 			<p:input port="parameters">
 				<p:empty/>
 			</p:input>
-			<p:input port="template">
+			<p:input port="source">
+				<p:pipe step="save-subscription" port="source"/>
+			</p:input>
+			<p:input port="stylesheet">
+				<p:inline exclude-inline-prefixes="z oai fn">
+					<!-- this simple stylesheet handles a flat namespace of single-valued properties -->
+					<xsl:stylesheet version="2.0" 
+						xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+						xmlns:c="http://www.w3.org/ns/xproc-step"
+						xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+						exclude-result-prefixes="c xs">
+						<xsl:template match="/c:param-set">
+							<subscription xmlns="tag:conaltuohy.com,2014:oai-harvest">
+								<xsl:apply-templates/>
+							</subscription>
+						</xsl:template>
+						<xsl:template match="c:param">
+							<xsl:element name="{@name}" namespace="tag:conaltuohy.com,2014:oai-harvest">
+								<xsl:value-of select="@value"/>
+							</xsl:element>
+						</xsl:template>
+					</xsl:stylesheet>
+				</p:inline>
+			</p:input>
+		</p:xslt>
+		<!-- bundle the existing subscription with the updated subscription data -->
+		<p:wrap-sequence name="subscription-and-update" wrapper="oai:subscription-and-update">
+			<p:input port="source">
+				<p:pipe step="existing-subscription" port="result"/>
+				<p:pipe step="convert-posted-data-to-persistent-form" port="result"/>
+			</p:input>
+		</p:wrap-sequence>
+		<!-- perform a merge, over-writing any element of existing subscription which had an update -->
+		<p:xslt>
+			<p:input port="parameters">
+				<p:empty/>
+			</p:input>
+			<p:input port="source">
+				<p:pipe step="subscription-and-update" port="result"/>
+			</p:input>
+			<p:input port="stylesheet">
+				<p:inline exclude-inline-prefixes="z fn c oai">
+					<xsl:stylesheet version="2.0" 
+						xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+						xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+						xmlns="tag:conaltuohy.com,2014:oai-harvest" 
+						xpath-default-namespace="tag:conaltuohy.com,2014:oai-harvest"
+						exclude-result-prefixes="xs">
+						<xsl:template match="/">
+							<xsl:variable name="existing" select="subscription-and-update/subscription[1]/*"/>
+							<xsl:variable name="update" select="subscription-and-update/subscription[2]/*"/>
+							<subscription>
+								<xsl:for-each select="$existing">
+									<xsl:variable name="name" select="local-name()"/>
+									<xsl:if test="not($update[local-name() = $name])">
+										<xsl:copy-of select="."/>
+									</xsl:if>
+								</xsl:for-each>
+								<xsl:copy-of select="$update"/>
+							</subscription>
+						</xsl:template>
+					</xsl:stylesheet>
+				</p:inline>
+			</p:input>
+		</p:xslt>
+		<!-- read from the repository -->
+		<p:group name="subscription-with-repository-details">
+			<p:variable name="old-url" select="string(/oai:subscription/oai:baseURL)">
+				<p:pipe step="existing-subscription" port="result"/>
+			</p:variable>
+			<p:variable name="new-url" select="string(/oai:subscription/oai:baseURL)">
+				<p:pipe step="convert-posted-data-to-persistent-form" port="result"/>
+			</p:variable>			
+			<p:choose>
+				<p:when test="$old-url = $new-url">
+					<p:identity/>
+				</p:when>
+				<p:otherwise>
+					<p:load name="identify">
+						<p:with-option name="href" select="concat($new-url, '?verb=Identify')"/>
+					</p:load>
+					<p:load name="list-sets">
+						<p:with-option name="href" select="concat($new-url, '?verb=ListSets')"/>
+					</p:load>
+					<p:load name="list-metadata-formats">
+						<p:with-option name="href" select="concat($new-url, '?verb=ListMetadataFormats')"/>
+					</p:load>
+					<!-- throw out any existing cache of OAI-PMH repository metadata -->
+					<p:delete xmlns:oai-pmh="http://www.openarchives.org/OAI/2.0/" match="oai-pmh:OAI-PMH"/>
+					<p:insert position="first-child">
+						<p:input port="source">
+							<p:pipe step="convert-posted-data-to-persistent-form" port="result"/>
+						</p:input>
+						<p:input port="insertion">
+							<p:pipe step="identify" port="result"/>
+							<p:pipe step="list-sets" port="result"/>
+							<p:pipe step="list-metadata-formats" port="result"/>
+						</p:input>
+					</p:insert>
+				</p:otherwise>
+			</p:choose>
+		</p:group>
+		<p:identity name="updated-subscription"/>
+		<p:store>
+			<p:with-option name="href" select="$subscription"/>
+		</p:store>
+		<!-- render the data in an HTML form -->
+		<oai:render-subscription-form name="subscription-form">
+			<p:input port="source">
+				<p:pipe step="updated-subscription" port="result"/>
+			</p:input>
+		</oai:render-subscription-form>
+		<!-- kick off the harvest if the subscription's status is "started" -->
+		<oai:do-harvest name="harvest">		
+			<p:with-option name="subscription" select="$subscription"/>
+			<p:input port="source">
+				<p:pipe step="updated-subscription" port="result"/>
+			</p:input>
+		</oai:do-harvest>
+		<p:identity>
+			<p:input port="source">
+				<p:pipe step="subscription-form" port="result"/>
+				<p:pipe step="harvest" port="result"/>
+			</p:input>
+		</p:identity>
+	</p:declare-step>
+	
+	<p:declare-step type="oai:delete-transformation" name="delete-transformation">
+		<!-- TODO -->
+		<p:identity/>
+	</p:declare-step>
+	<p:declare-step type="oai:save-transformation" name="save-transformation">
+		<!-- TODO -->
+		<p:identity/>
+	</p:declare-step>
+	<p:declare-step type="oai:delete-subscription" name="delete-subscription">
+		<p:input port="source"/>
+		<!-- QAZ sequence=true required here apparently to match the sequence output from oai:save-subscription -->
+		<!-- bug in Calabash? "As a convenience to authors, it is not an error if some subpipelines declare outputs that can produce sequences and some do not. Each output of the p:choose is declared to produce a sequence if that output is declared to produce a sequence in any of its subpipelines."-->
+		<p:output port="result" sequence="true"/>
+		<p:option name="subscription"/>
+		<pxf:delete xmlns:pxf="http://exproc.org/proposed/steps/file" fail-on-error="false">
+			<p:with-option name="href" select="$subscription"/>
+		</pxf:delete>
+		<z:make-http-response>
+			<p:input port="source">
 				<p:inline>
 					<html xmlns="http://www.w3.org/1999/xhtml">
 						<head>
-							<title>{/oai:subscription/oai:name/text()}</title>
+							<title>Subscription Deleted</title>
 						</head>
 						<body>
-							<h1>{/oai:subscription/oai:name/text()}</h1>
-							<form method="POST" action="#">
-								<p>
-									<label for="name">Name</label>
-									<input id="name" name="name" type="text" value="{/oai:subscription/oai:name/text()}"/>
-								</p>
-								<input type="submit" name="save" value="Save"/>
-								<input type="submit" name="delete" value="Delete"/>
-							</form>
+							<h1>Subscription Deleted</h1>
+							<p><a href="..">View subscriptions</a></p>
 						</body>
 					</html>
 				</p:inline>
 			</p:input>
-		</p:template>
+		</z:make-http-response>
+	</p:declare-step>
+
+	<p:declare-step type="oai:do-harvest" name="do-harvest">
+		<p:input port='source' primary='true'/>
+		<p:output port="result" primary="true" sequence="true"/>
+		<p:option name="subscription"/>
+		<!-- TODO actually kick off a harvest if status="started"-->
+		<p:for-each>
+			<p:iteration-source select="/oai:subscription[oai:status='started']"/>
+			<p:identity>
+				<p:input port="source">
+					<p:inline>
+						<c:request method="GET" href="/xproc-z/"/>
+					</p:inline>
+					<!--
+					<p:empty/>
+					-->
+				</p:input>
+			</p:identity>
+		</p:for-each>
+	</p:declare-step>
+	
+	
+	<p:declare-step type="oai:load-subscription" name="load-subscription">
+		<p:input port="source"/>
+		<p:output port="result"/>
+		<p:option name="subscription"/>
+		<p:try name="load-existing-data">
+			<p:group>
+				<p:load>
+					<p:with-option name="href" select="$subscription"/>
+				</p:load>
+			</p:group>
+			<p:catch name="no-existing-data">
+				<p:identity name="new-blank-subscription">
+					<p:input port="source">
+						<p:inline exclude-inline-prefixes="#all">
+							<subscription xmlns="tag:conaltuohy.com,2014:oai-harvest">
+								<name>Untitled Subscription</name>
+								<status>New</status>
+								<set></set>
+								<metadataPrefix>oai_dc</metadataPrefix>
+							</subscription>
+						</p:inline>
+					</p:input>
+				</p:identity>
+			</p:catch>
+		</p:try>
+	</p:declare-step>
+	
+	<p:declare-step type="oai:render-subscription-form" name="render-subscription-form">
+		<p:input port="source"/>
+		<p:output port="result"/>
+		<!-- display subscription in HTML form-->
+		<!-- look up OAI-PMH server and request metadata -->
+		<p:xslt>
+			<p:input port="parameters">
+				<p:empty/>
+			</p:input>
+			<p:input port="stylesheet">
+				<p:inline exclude-inline-prefixes="z fn c oai">
+					<xsl:stylesheet version="2.0" 
+						xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+						xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+						xmlns:oai-pmh="http://www.openarchives.org/OAI/2.0/"
+						xmlns="http://www.w3.org/1999/xhtml" 
+						xpath-default-namespace="tag:conaltuohy.com,2014:oai-harvest"
+						exclude-result-prefixes="xs">
+						<xsl:template match="/subscription">
+							<html>
+								<head>
+									<title><xsl:value-of select="name"/></title>
+									<style type="text/css">
+										body {
+											font-family: sans-serif;
+										}
+										div.repository-metadata {
+											background-color: #332D00;
+											color: #FFFFFF;
+											border-style: none;
+											padding: 0.5em;
+											margin: 0.5em;
+										}
+										div.repository-metadata a {
+											color: #FFFFFF;
+										}
+										th {
+											font-weight: bold;
+											width: 10em;
+										}
+										th {
+											text-align: right;
+										}
+										th, td {
+											padding: 0.5em;
+										}
+									</style>
+								</head>
+								<body>
+									<h1><xsl:value-of select="name"/></h1>
+									<form method="POST" action="#">
+										<p>
+											<label for="name">Subscription Name</label>
+											<input id="name" name="name" type="text" value="{name}"/>
+										</p>
+										<p>
+											<label for="baseURL">Repository Base URL</label>
+											<input id="baseURL" name="baseURL" type="text" value="{baseURL}"/>
+										</p>
+										<xsl:if test="oai-pmh:OAI-PMH/oai-pmh:ListSets/oai-pmh:set">
+											<!-- the repository has a set hierarchy -->
+											<p>
+												<label for="set">Set</label>
+												<select id="set" name="set">
+													<xsl:variable name="selectedSetSpec" select="set"/>
+													<xsl:call-template name="render-set">
+														<xsl:with-param name="setName" select="'(all records)'"/>
+														<xsl:with-param name="setSpec" select="''"/>
+														<xsl:with-param name="selectedSetSpec" select="$selectedSetSpec"/>
+													</xsl:call-template>
+													<xsl:for-each select="oai-pmh:OAI-PMH/oai-pmh:ListSets/oai-pmh:set">
+														<xsl:call-template name="render-set">
+															<xsl:with-param name="setName" select="oai-pmh:setName"/>
+															<xsl:with-param name="setSpec" select="oai-pmh:setSpec"/>
+															<xsl:with-param name="selectedSetSpec" select="$selectedSetSpec"/>
+														</xsl:call-template>
+													</xsl:for-each>
+												</select>
+											</p>
+										</xsl:if>
+										<p>
+											<label for="metadataPrefix">Metadata Format</label>
+											<select id="metadataPrefix" name="metadataPrefix">
+												<xsl:variable name="selectedMetadataPrefix" select="string(metadataPrefix)"/>
+												<xsl:for-each select="oai-pmh:OAI-PMH/oai-pmh:ListMetadataFormats/oai-pmh:metadataFormat">
+													<option value="{oai-pmh:metadataPrefix}">
+														<xsl:if test="string(oai-pmh:metadataPrefix) = $selectedMetadataPrefix">
+															<xsl:attribute name="selected">selected</xsl:attribute>
+														</xsl:if>
+														<xsl:value-of select="oai-pmh:metadataPrefix"/>
+													</option>
+												</xsl:for-each>
+											</select>
+										</p>
+										<p>
+											<span>Status</span>
+											<span><xsl:value-of select="status"/></span>
+										</p>
+										<button type="submit">Save</button>
+										<button type="submit" name="status" value="deleted">Delete</button>
+										<button type="submit" name="status" value="started">Run</button>
+										<button type="submit" name="status" value="stopped">Stop</button>
+									</form>
+									<xsl:apply-templates select="oai-pmh:OAI-PMH"/>
+								</body>
+							</html>
+						</xsl:template>
+						<xsl:template name="render-set">
+							<xsl:param name="setName"/>
+							<xsl:param name="setSpec"/>
+							<xsl:param name="selectedSetSpec"/>
+							<option value="{$setSpec}">
+								<xsl:if test="string($setSpec) = string($selectedSetSpec)">
+									<xsl:attribute name="selected">selected</xsl:attribute>
+								</xsl:if>
+								<xsl:value-of select="$setName"/>
+							</option>
+						</xsl:template>
+						<!-- Render the cached OAI-PMH Repository Metadata Records -->
+						<xsl:template match="oai-pmh:OAI-PMH">
+							<xsl:apply-templates select="oai-pmh:Identify"/>
+							<xsl:apply-templates select="oai-pmh:ListMetadataFormats"/>
+							<xsl:apply-templates select="oai-pmh:ListSets"/>
+						</xsl:template>
+						<xsl:template match="oai-pmh:ListMetadataFormats"/>
+						<xsl:template match="oai-pmh:ListSets"/>
+						<xsl:template match="oai-pmh:Identify">
+							<div class="repository-metadata">
+								<h2>OAI-PMH Repository</h2>
+								<table>
+									<tr>
+										<th>Repository Name</th>
+										<td><xsl:value-of select="oai-pmh:repositoryName"/></td>
+									</tr>
+									<tr>
+										<th>Administrator</th>
+										<td><a href="mailto:{oai-pmh:adminEmail}"><xsl:value-of select="oai-pmh:adminEmail"/></a></td>
+									</tr>
+									<tr>
+										<th>Earliest Record</th>
+										<td><xsl:value-of select="oai-pmh:earliestDatestamp"/></td>
+									</tr>
+									<tr>
+										<th>Deleted Record Retention</th>
+										<td><xsl:value-of select="oai-pmh:deletedRecord"/></td>
+									</tr>
+									<tr>
+										<th>Date and Time Granularity</th>
+										<td><xsl:choose>
+											<xsl:when test="oai-pmh:granularity = 'YYYY-MM-DDThh:mm:ssZ'">second</xsl:when>
+											<xsl:otherwise>day</xsl:otherwise>
+										</xsl:choose></td>
+									</tr>
+									<tr>
+										<th>Data Compression</th>
+										<td><xsl:value-of select="oai-pmh:compression"/></td>
+									</tr>
+								</table>
+							</div>
+						</xsl:template>
+					</xsl:stylesheet>
+				</p:inline>
+			</p:input>
+		</p:xslt>
 		<oai:http-respond/>
-	</p:pipeline>
+	</p:declare-step>
 	
+	<p:declare-step type="oai:render-transformation-form" name="render-transformation-form">
+		<p:input port="source"/>
+		<p:output port="result"/>
+		<!-- display Transformation in HTML form-->
+		<p:xslt>
+			<p:input port="parameters">
+				<p:empty/>
+			</p:input>
+			<p:input port="stylesheet">
+				<p:inline exclude-inline-prefixes="z fn c oai">
+					<xsl:stylesheet version="2.0" 
+						xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+						xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+						xmlns:oai-pmh="http://www.openarchives.org/OAI/2.0/"
+						xmlns="http://www.w3.org/1999/xhtml" 
+						xpath-default-namespace="tag:conaltuohy.com,2014:oai-harvest"
+						exclude-result-prefixes="xs">
+						<xsl:variable name="stylesheet" select="/*/stylesheet"/>
+						<xsl:variable name="title" select="(/*/stylesheet/@title, 'Untitled Stylesheet')[1]"/>
+						<xsl:template match="/">
+							<html>
+								<head>
+									<title><xsl:value-of select="$title"/></title>
+									<style type="text/css">
+										body {
+											font-family: sans-serif;
+										}
+									</style>
+								</head>
+								<body>
+									<h1><xsl:value-of select="$title"/></h1>
+									<form method="POST" action="#">
+									</form>
+								</body>
+							</html>
+						</xsl:template>
+					</xsl:stylesheet>
+				</p:inline>
+			</p:input>
+		</p:xslt>
+		<oai:http-respond/>
+	</p:declare-step>
 	
-	<p:pipeline type="oai:list-subscriptions" name="list-subscriptions">
+	<p:declare-step type="oai:list-transformations" name="list-transformations">
+		<p:input port="source"/>
+		<p:output port="result"/>
+		<p:option name="directory" required="true"/>
+		<p:directory-list include-filter="[^\.]*\.xsl">
+			<p:with-option name="path" select="$directory"/>
+		</p:directory-list>
+		<p:viewport name="transformations" match="//c:file">
+			<p:load name="transformation">
+				<p:with-option name="href" select="resolve-uri(/c:file/@name, base-uri(/c:file))"/>
+			</p:load>
+			<p:filter name="documentation" select="/*/oai:stylesheet"/>
+			<p:insert position="first-child">
+				<p:input port="source">
+					<p:pipe step="transformations" port="current"/>
+				</p:input>
+				<p:input port="insertion">
+					<p:pipe step="documentation" port="result"/>
+				</p:input>
+			</p:insert>
+		</p:viewport>
+		<oai:http-respond/>
+	</p:declare-step>	
+	
+	<p:declare-step type="oai:list-subscriptions" name="list-subscriptions">
+		<p:input port="source"/>
+		<p:output port="result"/>
 		<p:option name="directory" required="true"/>
 		<p:directory-list include-filter="[^\.]*\.xml">
 			<p:with-option name="path" select="$directory"/>
@@ -413,6 +786,6 @@
 			</p:insert>
 		</p:viewport>
 		<oai:http-respond/>
-	</p:pipeline>
+	</p:declare-step>
 	
 </p:library>
