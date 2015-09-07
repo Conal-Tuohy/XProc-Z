@@ -30,6 +30,77 @@
 		</rdf:RDF>
 	</xsl:template>
 	
+	<!-- taxa (other than species -->
+			<!-- TODO disclose the Linnaean type system here, by giving this type its own type e.g. "Phylum", "Class" -->
+	<xsl:template match="/*[@type='taxon']">
+		<!-- find the taxonomic rank of this taxon -->
+		<xsl:variable name="taxon-rank-and-name" select="substring-after($id, '/')"/><!-- e.g. "genus-Ischnochiton" -->
+		<xsl:variable name="taxon-rank" select="substring-before($taxon-rank-and-name, '-')"/><!-- "genus" -->
+		<xsl:variable name="taxon-name" select="substring-after($taxon-rank-and-name, '-')"/> <!-- "Ischnochiton " -->
+		<xsl:variable name="taxa" select="
+			(
+				j:json/j:taxonomy/j:subgenus,
+				j:json/j:taxonomy/j:genus,
+				j:json/j:taxonomy/j:subfamily,
+				j:json/j:taxonomy/j:family,
+				j:json/j:taxonomy/j:infraorder,
+				j:json/j:taxonomy/j:suborder,
+				j:json/j:taxonomy/j:order,
+				j:json/j:taxonomy/j:superorder,
+				j:json/j:taxonomy/j:subclass,
+				j:json/j:taxonomy/j:subclass,
+				j:json/j:taxonomy/j:class,
+				j:json/j:taxonomy/j:superclass,
+				j:json/j:taxonomy/j:subphylum,
+				j:json/j:taxonomy/j:phylum,
+				j:json/j:taxonomy/j:kingdom
+			)
+		"/>
+		<xsl:variable name="taxon" select="j:json/j:taxonomy/*[$taxon-rank=local-name(.)]"/><!-- <j:genus type="string">Ischnochiton</j:genus> -->
+		<xsl:variable name="specified-taxa" select="for $t in $taxa[not(@type='null')] return $t"/><!-- the superior taxa actually defined for this taxon -->
+		<xsl:variable name="taxon-ranks" select="for $t in $specified-taxa return local-name($t)"/><!-- the ranks of the superior taxa -->
+		<xsl:variable name="current-taxon-position" select="index-of($taxon-ranks, $taxon-rank)"/><!-- position of this taxon in the ranking -->
+		<xsl:variable name="relevant-taxa" select="subsequence($specified-taxa, $current-taxon-position)"/><!-- this taxon, and superior (but not inferior) taxa -->
+		<e:E55_Type rdf:about="{$base-uri}resource/taxon/{local-name($taxon)}-{$taxon}">
+			<xsl:call-template name="render-taxonomic-hierarchy">
+				<xsl:with-param name="taxa" select="$relevant-taxa"/>
+			</xsl:call-template>
+		</e:E55_Type>
+		<xsl:variable name="species" select="j:results/j:item"/>
+		<xsl:for-each select="$species">
+			<e:E55_Type rdf:about="{$base-uri}resource/{j:id}">
+				<e:P1_is_identified_by>
+					<e:E41_Appellation rdf:ID="{translate(j:id, '/', '-')}">
+						<rdf:value><xsl:value-of select="substring-before(substring-after(j:displayTitle, '&lt;em&gt;'), '&lt;/em&gt;')"/></rdf:value>
+					</e:E41_Appellation>
+				</e:P1_is_identified_by>
+				<e:P127_has_broader_term rdf:resource="{$base-uri}resource/taxon/{local-name($taxon)}-{$taxon}"/>
+			</e:E55_Type>
+		</xsl:for-each>
+	</xsl:template>
+	
+	<xsl:template name="render-taxonomic-hierarchy">
+		<xsl:param name="taxa"/>
+		<xsl:variable name="taxon" select="$taxa[1]"/>
+		<xsl:variable name="super-taxon" select="$taxa[2]"/>
+		<xsl:if test="$taxon">
+			<e:P1_is_identified_by>
+				<e:E41_Appellation rdf:ID="{local-name($taxon)}">
+					<rdf:value><xsl:value-of select="$taxon"/></rdf:value>
+				</e:E41_Appellation>
+			</e:P1_is_identified_by>
+			<xsl:if test="$super-taxon">
+				<e:P127_has_broader_term>
+					<e:E55_Type rdf:about="{$base-uri}resource/taxon/{local-name($super-taxon)}-{$super-taxon}">
+						<xsl:call-template name="render-taxonomic-hierarchy">
+							<xsl:with-param name="taxa" select="subsequence($taxa, 2)"/>
+						</xsl:call-template>
+					</e:E55_Type>
+				</e:P127_has_broader_term>
+			</xsl:if>
+		</xsl:if>
+	</xsl:template>
+	
 	<!-- specimens -->
 	<xsl:template match="j:json[@type='specimen']">
 		<e:E20_Biological_Object rdf:about="{$base-uri}resource/{$id}">
@@ -40,11 +111,49 @@
 	<!-- species -->
 	<xsl:template match="j:json[@type='species']">
 		<e:E55_Type rdf:about="{$base-uri}resource/{$id}">
+			<!-- TODO relate this type to all the superior taxa -->
 			<xsl:apply-templates/>
 		</e:E55_Type>
 	</xsl:template>
 	
+	<xsl:template match="j:json[@type='species']/j:taxonomy">
+		<xsl:variable name="taxa" select="
+			(
+				j:subgenus,
+				j:genus,
+				j:subfamily,
+				j:family,
+				j:infraorder,
+				j:suborder,
+				j:order,
+				j:superorder,
+				j:subclass,
+				j:subclass,
+				j:class,
+				j:superclass,
+				j:subphylum,
+				j:phylum,
+				j:kingdom
+			)
+		"/>	
+		<xsl:variable name="specified-taxa" select="for $t in $taxa[not(@type='null')] return $t"/><!-- the superior taxa actually defined for this taxon -->	
+		<xsl:variable name="super-taxon" select="$specified-taxa[1]"/>
+		<xsl:apply-templates select="j:taxonName"/>
+		<e:P127_has_broader_term>
+			<e:E55_Type rdf:about="{$base-uri}resource/taxon/{local-name($super-taxon)}-{$super-taxon}">
+				<xsl:call-template name="render-taxonomic-hierarchy">
+					<xsl:with-param name="taxa" select="$specified-taxa"/>
+				</xsl:call-template>
+			</e:E55_Type>
+		</e:P127_has_broader_term>
+	</xsl:template>
+	
 	<xsl:template match="j:taxonName">
+		<e:P1_is_identified_by>
+			<e:E41_Appellation rdf:ID="taxonName">
+				<rdf:value><xsl:value-of select="."/></rdf:value>
+			</e:E41_Appellation>
+		</e:P1_is_identified_by>
 	</xsl:template>
 	
 	<!-- articles -->
