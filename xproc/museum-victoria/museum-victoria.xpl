@@ -58,12 +58,42 @@
 						</p:when>
 						<p:otherwise>
 							<!-- make a request to the Museum Victoria API -->
-							<mv:make-api-call>
+							<mv:make-api-call name="museum-api-data">
 								<p:with-option name="uri" select="substring-after($relative-uri, 'data/')"/>
 								<p:input port="parameters">
 									<p:pipe step="request-uri" port="result"/>
 								</p:input>
 							</mv:make-api-call>
+							<!-- TODO for species, look up binomial name in dbpedia, e.g.
+							select distinct ?species where
+							{
+								?species dbp:binomial "Hapalochlaena maculosa"@en
+							}
+							-->
+							<p:choose>
+								<p:when test="starts-with($relative-uri, 'data/species/')">
+									<mv:dbpedia-sparql-query name="dbpedia-species">
+										<p:with-option name="query" select="
+											'select distinct ?species where {?species dbp:binomial ',
+											codepoints-to-string(34),
+											//j:taxonName,
+											codepoints-to-string(34), '@en', 
+											'}'
+										"/>
+									</mv:dbpedia-sparql-query>
+									<p:insert position="first-child">
+										<p:input port="source">
+											<p:pipe step="museum-api-data" port="result"/>
+										</p:input>
+										<p:input port="insertion">
+											<p:pipe step="dbpedia-species" port="result"/>
+										</p:input>	
+									</p:insert>
+								</p:when>
+								<p:otherwise>
+									<p:identity/>
+								</p:otherwise>
+							</p:choose>
 						</p:otherwise>
 					</p:choose>
 					<!-- tag the root element to match its high-level type as defined in the request URI -->
@@ -179,4 +209,27 @@
 			</p:input>
 		</p:xslt>
 	</p:declare-step>
+	
+	<p:declare-step type="mv:dbpedia-sparql-query" name="sparql-query">
+		<p:output port="result"/>
+		<p:option name="query"/>
+		<p:template name="generate-http-request">
+			<p:with-param name="query" select="$query"/>
+			<p:input port="source"><p:empty/></p:input>
+			<p:input port="template">
+				<p:inline>
+					<c:request method="GET" detailed="true" href="{
+						concat(
+							'http://dbpedia.org/sparql',
+							'?default-graph-uri=http%3A%2F%2Fdbpedia.org',
+							'&amp;format=application%2Fsparql-results',
+							'&amp;query=', encode-for-uri($query)
+						)
+					}"/>
+				</p:inline>
+			</p:input>
+		</p:template>
+		<p:http-request/>
+	</p:declare-step>	
+	
 </p:library>

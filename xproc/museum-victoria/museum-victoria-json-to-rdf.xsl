@@ -4,6 +4,7 @@
 	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 	xmlns:e="http://erlangen-crm.org/current/"
 	xmlns:html="http://www.w3.org/1999/xhtml"
+	xmlns:skos=" 	http://www.w3.org/2004/02/skos/core#"
 	exclude-result-prefixes="j xs">
 	
 	<xsl:param name="public-uri"/>
@@ -21,12 +22,7 @@
 	<xsl:template match="/">
 		<rdf:RDF>
 			<xsl:apply-templates/>
-			<!--
-			<xsl:comment>Public URI: <xsl:value-of select="$public-uri"/></xsl:comment>
-			<xsl:comment>Relative URI: <xsl:value-of select="$relative-uri"/></xsl:comment>
-			<xsl:comment>Base URI: <xsl:value-of select="$base-uri"/></xsl:comment>
-			<xsl:comment>JSON:</xsl:comment>
-			<xsl:copy-of select="j:json"/>-->
+			<!--<xsl:copy-of select="j:json"/>-->
 		</rdf:RDF>
 	</xsl:template>
 	
@@ -111,10 +107,19 @@
 	<!-- species -->
 	<xsl:template match="j:json[@type='species']">
 		<e:E55_Type rdf:about="{$base-uri}resource/{$id}">
-			<!-- TODO relate this type to all the superior taxa -->
 			<xsl:apply-templates/>
 		</e:E55_Type>
 	</xsl:template>
+	
+	<xsl:template
+		xmlns:c="http://www.w3.org/ns/xproc-step"
+		xmlns:sr="http://www.w3.org/2005/sparql-results#"
+		match="j:json[@type='species']
+			/c:response[@status='200']/c:body/
+			sr:sparql/sr:results/sr:result/sr:binding[@name='species']/sr:uri">
+		<skos:closeMatch rdf:resource="{.}"/>
+	</xsl:template>
+	
 	
 	<xsl:template match="j:json[@type='species']/j:taxonomy">
 		<xsl:variable name="taxa" select="
