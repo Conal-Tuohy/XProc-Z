@@ -64,14 +64,14 @@
 									<p:pipe step="request-uri" port="result"/>
 								</p:input>
 							</mv:make-api-call>
-							<!-- TODO for species, look up binomial name in dbpedia, e.g.
-							select distinct ?species where
-							{
-								?species dbp:binomial "Hapalochlaena maculosa"@en
-							}
-							-->
 							<p:choose>
 								<p:when test="starts-with($relative-uri, 'data/species/')">
+									<!-- for species, look up binomial name in dbpedia, e.g.
+										select distinct ?species where
+										{
+											?species dbp:binomial "Hapalochlaena maculosa"@en
+										}
+									-->
 									<mv:dbpedia-sparql-query name="dbpedia-species">
 										<p:with-option name="query" select="
 											'select distinct ?species where {?species dbp:binomial ',
@@ -81,6 +81,7 @@
 											'}'
 										"/>
 									</mv:dbpedia-sparql-query>
+									<!-- stick the query result into the data document to be transformed into RDF -->
 									<p:insert position="first-child">
 										<p:input port="source">
 											<p:pipe step="museum-api-data" port="result"/>
@@ -91,6 +92,7 @@
 									</p:insert>
 								</p:when>
 								<p:otherwise>
+									<!-- not a request for a species, so no enhancement required -->
 									<p:identity/>
 								</p:otherwise>
 							</p:choose>
@@ -111,7 +113,7 @@
 						"/>
 						</p:add-attribute>
 					</p:group>
-					<!-- convert the JSON into RDF/XML -->
+					<!-- convert the JSON (possibly including SPARQL query results) into RDF/XML -->
 					<mv:transform xslt="museum-victoria-json-to-rdf.xsl">
 						<p:with-param name="public-uri" select="$public-uri"/>
 						<p:with-param name="relative-uri" select="$relative-uri"/>
@@ -120,7 +122,7 @@
 					<z:make-http-response content-type="application/rdf+xml"/>
 				</p:when>
 				<p:when test="starts-with($relative-uri, 'resource/')">
-				<!-- request for a generic "resource" which we redirect to an information ("data") resource -->
+					<!-- request for a generic "resource" which we redirect to an information ("data") resource -->
 					<mv:redirect-to-information-resource>
 						<p:input port="parameters">
 							<p:pipe step="request-uri" port="result"/>
