@@ -24,13 +24,26 @@
 				)
 			"/>
 			<p:choose>
-				<!-- request for a "data" resource, i.e. a document -->
+				<!-- request for HTML -->
+				<p:when test="starts-with($relative-uri, 'data/html/')">
+					<!-- get the article from Museum Victoria's API -->
+					<mv:make-api-call name="museum-api-data">
+						<p:with-option name="uri" select="substring-after($relative-uri, 'data/html/')"/>
+					</mv:make-api-call>
+					<!-- extract the HTML from the JSON and format it nicely -->
+					<mv:transform xslt="museum-victoria-json-to-html.xsl">
+						<p:with-param name="public-uri" select="$public-uri"/>
+						<p:with-param name="relative-uri" select="$relative-uri"/>
+					</mv:transform>
+					<!-- return the HTML -->
+					<z:make-http-response content-type="application/xhtml+xml"/>					
+				</p:when>
+				<!-- request for a "data" resource, i.e. an RDF graph -->
 				<p:when test="starts-with($relative-uri, 'data/')">
 					<p:choose>
 						<p:when test="starts-with($relative-uri, 'data/taxon/')">
 							<!-- make a request to the Museum Victoria "search" API to find species
-								by taxon name
-							-->
+								by taxon name -->
 							<mv:make-api-call name="species-by-taxon">
 								<p:with-option name="uri" select="
 									concat(
@@ -38,9 +51,6 @@
 										substring-after(substring-after($relative-uri, 'data/taxon/'), '-')
 									)
 								"/>
-								<p:input port="parameters">
-									<p:pipe step="request-uri" port="result"/>
-								</p:input>
 							</mv:make-api-call>
 							<!-- now make a request for the first one of those species -->
 							<mv:make-api-call name="representative-species-for-taxon">
@@ -60,9 +70,6 @@
 							<!-- make a request to the Museum Victoria API -->
 							<mv:make-api-call name="museum-api-data">
 								<p:with-option name="uri" select="substring-after($relative-uri, 'data/')"/>
-								<p:input port="parameters">
-									<p:pipe step="request-uri" port="result"/>
-								</p:input>
 							</mv:make-api-call>
 							<p:choose>
 								<p:when test="starts-with($relative-uri, 'data/species/')">
@@ -103,12 +110,13 @@
 						<p:variable name="type" select="substring-before(substring-after($relative-uri, 'data/'), '/')"/>
 						<p:add-attribute match="/*" attribute-name="type">
 							<p:with-option name="attribute-value" select="
-							('article', 'item', 'species', 'specimen', 'taxon')[
+							('article', 'item', 'species', 'specimen', 'taxon', 'html')[
 								xs:integer($type='articles') +
 								xs:integer($type='items') * 2 +
 								xs:integer($type='species') * 3 +
 								xs:integer($type='specimens') * 4 +
-								xs:integer($type='taxon') * 5
+								xs:integer($type='taxon') * 5 +
+								xs:integer($type='html') * 6
 							]
 						"/>
 						</p:add-attribute>
@@ -139,7 +147,7 @@
 	<p:declare-step type="mv:make-api-call">
 		<p:input port="source"/>
 		<p:output port="result"/>
-		<p:input port="parameters" kind="parameter"/>
+		<!--<p:input port="parameters" kind="parameter"/>-->
 		<p:option name="uri"/>
 		<p:template>
 			<p:with-param name="uri" select="$uri"/>
