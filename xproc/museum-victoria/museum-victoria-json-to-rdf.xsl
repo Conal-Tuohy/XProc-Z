@@ -194,19 +194,15 @@
 	</xsl:template>
 	
 	<xsl:template match="j:objectSummary">
-		<crm:P3_has_note>
-			<crm:E62_Note rdf:ID="objectSummary">
-				<rdf:value><xsl:value-of select="."/></rdf:value>
-			</crm:E62_Note>
-		</crm:P3_has_note>
+		<crm:P3_has_note><xsl:value-of select="."/></crm:P3_has_note>
 	</xsl:template>
 	
 	<xsl:template match="j:json[@type='item']/j:relatedArticleIds/j:item" mode="reverse">
 		<!-- the related articles of an item document the item-->
 		<crm:E31_Document rdf:about="{$base-uri}resource/{.}">
-			<crm:P70_Documents>
+			<crm:P70_documents>
 				<crm:E19_Physical_Object rdf:about="{$base-uri}resource/{$id}"/>
-			</crm:P70_Documents>
+			</crm:P70_documents>
 		</crm:E31_Document>
 	</xsl:template>
 	
@@ -228,9 +224,9 @@
 	
 	<xsl:template match="j:json[@type='article']/j:relatedItemIds/j:item">
 		<!-- the related items of an article are things which the article documents -->
-		<crm:P70_Documents>
+		<crm:P70_documents>
 			<crm:E19_Physical_Object rdf:about="{$base-uri}resource/{.}"/>
-		</crm:P70_Documents>
+		</crm:P70_documents>
 	</xsl:template>
 	
 	<xsl:template match="j:json[@type='article']/j:relatedArticleIds/j:item">
