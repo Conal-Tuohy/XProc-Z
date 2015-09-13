@@ -179,9 +179,10 @@
 	
 	<!-- an item -->
 	<xsl:template match="j:json[@type='item']">
-		<crm:E19_Physical_Object rdf:about="{$base-uri}resource/{$id}">
+		<!-- "Things made and used by people -->
+		<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{$id}">
 			<xsl:apply-templates/>
-		</crm:E19_Physical_Object>
+		</crm:E22_Man-Made_Object>
 		<xsl:apply-templates mode="reverse"/>
 	</xsl:template>
 	
@@ -201,7 +202,7 @@
 		<!-- the related articles of an item document the item-->
 		<crm:E31_Document rdf:about="{$base-uri}resource/{.}">
 			<crm:P70_documents>
-				<crm:E19_Physical_Object rdf:about="{$base-uri}resource/{$id}"/>
+				<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{$id}"/>
 			</crm:P70_documents>
 		</crm:E31_Document>
 	</xsl:template>
@@ -225,7 +226,7 @@
 	<xsl:template match="j:json[@type='article']/j:relatedItemIds/j:item">
 		<!-- the related items of an article are things which the article documents -->
 		<crm:P70_documents>
-			<crm:E19_Physical_Object rdf:about="{$base-uri}resource/{.}"/>
+			<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{.}"/>
 		</crm:P70_documents>
 	</xsl:template>
 	
@@ -239,7 +240,7 @@
 	<xsl:template match="j:json[@type='item']/j:relatedItemIds/j:item">
 		<!-- the related items of an item are things with some non-specific similarity relation -->
 		<crm:P130_shows_features_of>
-			<crm:E19_Physical_Object rdf:about="{$base-uri}resource/{.}"/>
+			<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{.}"/>
 		</crm:P130_shows_features_of>
 	</xsl:template>
 	
