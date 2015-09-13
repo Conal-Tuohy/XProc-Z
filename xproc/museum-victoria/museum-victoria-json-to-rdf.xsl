@@ -195,13 +195,13 @@
 	</xsl:template>
 	
 	<xsl:template match="j:objectSummary">
-		<xsl:element name="mv:P3.1_objectSummary" namespace="{$base-uri}ontology">
+		<xsl:element name="mv:P3.1_objectSummary" namespace="{$base-uri}ontology#">
 			<xsl:value-of select="."/>
 		</xsl:element>
 	</xsl:template>
 	
 	<xsl:template match="j:physicalDescription">
-		<xsl:element name="mv:P3.1_physicalDescription" namespace="{$base-uri}ontology">
+		<xsl:element name="mv:P3.1_physicalDescription" namespace="{$base-uri}ontology#">
 			<xsl:value-of select="."/>
 		</xsl:element>
 	</xsl:template>
