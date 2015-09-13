@@ -195,7 +195,15 @@
 	</xsl:template>
 	
 	<xsl:template match="j:objectSummary">
-		<crm:P3_has_note><xsl:value-of select="."/></crm:P3_has_note>
+		<xsl:element name="mv:P3.1_objectSummary" namespace="{$base-uri}ontology">
+			<xsl:value-of select="."/>
+		</xsl:element>
+	</xsl:template>
+	
+	<xsl:template match="j:physicalDescription">
+		<xsl:element name="mv:P3.1_physicalDescription" namespace="{$base-uri}ontology">
+			<xsl:value-of select="."/>
+		</xsl:element>
 	</xsl:template>
 	
 	<xsl:template match="j:json[@type='item']/j:relatedArticleIds/j:item" mode="reverse">

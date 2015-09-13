@@ -24,6 +24,31 @@
 				)
 			"/>
 			<p:choose>
+				<p:when test="$relative-uri = 'ontology' ">
+					<p:identity>
+						<p:input port="source">
+							<p:inline>
+								<rdf:RDF 
+									xmlns:owl="http://www.w3.org/2002/07/owl#" 
+									xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+									xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+									<owl:DatatypeProperty rdf:ID="P3.1_objectSummary">
+										<rdfs:subPropertyOf rdf:resource="http://erlangen-crm.org/current/P3_has_note"/>
+										<rdfs:label>object summary</rdfs:label>
+										<rdfs:comment>This is a sub-property of crm:P3_has_note, reflecting the JSON objectSummary field</rdfs:comment>
+									</owl:DatatypeProperty>
+									<owl:DatatypeProperty rdf:ID="P3.1_physicalDescription">
+										<rdfs:subPropertyOf rdf:resource="http://erlangen-crm.org/current/P3_has_note"/>
+										<rdfs:label>physical description</rdfs:label>
+										<rdfs:comment>This is a sub-property of crm:P3_has_note, reflecting the JSON physicalDescription field</rdfs:comment>
+									</owl:DatatypeProperty>
+								</rdf:RDF>
+							</p:inline>
+						</p:input>
+					</p:identity>
+					<!-- return the RDF/XML -->
+					<z:make-http-response content-type="application/rdf+xml"/>
+				</p:when>
 				<!-- request for HTML -->
 				<p:when test="starts-with($relative-uri, 'data/html/')">
 					<!-- get the article from Museum Victoria's API -->
