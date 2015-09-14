@@ -27,6 +27,27 @@
 		</rdf:RDF>
 	</xsl:template>
 	
+	<xsl:template match="/*[@type='technique']">
+		<crm:E55_Type rdf:about="{$base-uri}resource/{$id}">
+			<crm:P1_is_identified_by>
+				<crm:E41_Appellation rdf:ID="name">
+					<rdf:value><xsl:value-of select="@technique"/></rdf:value>
+				</crm:E41_Appellation>
+			</crm:P1_is_identified_by>
+		</crm:E55_Type>
+		<!-- list items using this technique -->
+		<xsl:for-each select="j:results/j:item">
+			<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{j:id}">
+				<crm:E41_Appellation rdf:about="{$base-uri}resource/{j:id}#objectName">
+					<rdf:value><xsl:value-of select="j:displayTitle"/></rdf:value>
+				</crm:E41_Appellation>
+				<crm:P32_used_general_technique>
+					<crm:E55_Type rdf:about="{$base-uri}resource/{$id}"/>
+				</crm:P32_used_general_technique>
+			</crm:E22_Man-Made_Object>
+		</xsl:for-each>
+	</xsl:template>
+	
 	<!-- taxa (other than species -->
 			<!-- TODO disclose the Linnaean type system here, by giving this type its own type e.g. "Phylum", "Class" -->
 	<xsl:template match="/*[@type='taxon']">
@@ -99,7 +120,7 @@
 	</xsl:template>
 	
 	<!-- specimens -->
-	<xsl:template match="j:json[@type='specimen']">
+	<xsl:template match="j:json[@type='specimens']">
 		<crm:E20_Biological_Object rdf:about="{$base-uri}resource/{$id}">
 			<xsl:apply-templates/>
 		</crm:E20_Biological_Object>
@@ -163,7 +184,7 @@
 	</xsl:template>
 	
 	<!-- articles -->
-	<xsl:template match="j:json[@type='article']">
+	<xsl:template match="j:json[@type='articles']">
 		<crm:E31_Document rdf:about="{$base-uri}resource/{$id}">
 			<xsl:apply-templates/>
 		</crm:E31_Document>
@@ -178,7 +199,7 @@
 	</xsl:template>
 	
 	<!-- an item -->
-	<xsl:template match="j:json[@type='item']">
+	<xsl:template match="j:json[@type='items']">
 		<!-- "Things made and used by people -->
 		<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{$id}">
 			<xsl:apply-templates/>
@@ -206,13 +227,19 @@
 		</xsl:element>
 	</xsl:template>
 	
-	<xsl:template match="j:json[@type='item']/j:relatedArticleIds/j:item" mode="reverse">
+	<xsl:template match="j:json[@type='items']/j:relatedArticleIds/j:item" mode="reverse">
 		<!-- the related articles of an item document the item-->
 		<crm:E31_Document rdf:about="{$base-uri}resource/{.}">
 			<crm:P70_documents>
 				<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{$id}"/>
 			</crm:P70_documents>
 		</crm:E31_Document>
+	</xsl:template>
+	
+	<xsl:template match="j:archeologyTechnique">
+		<crm:P32_used_general_technique>
+			<crm:E55_Type rdf:about="{$base-uri}resource/technique/{encode-for-uri(lower-case(.))}"/>
+		</crm:P32_used_general_technique>
 	</xsl:template>
 	
 	<!--
@@ -231,21 +258,21 @@
 		<frbr:R4_carriers_provided_by rdf:about="{$base-uri}data/html/{$id}"/>
 	</xsl:template>
 	
-	<xsl:template match="j:json[@type='article']/j:relatedItemIds/j:item">
+	<xsl:template match="j:json[@type='articles']/j:relatedItemIds/j:item">
 		<!-- the related items of an article are things which the article documents -->
 		<crm:P70_documents>
 			<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{.}"/>
 		</crm:P70_documents>
 	</xsl:template>
 	
-	<xsl:template match="j:json[@type='article']/j:relatedArticleIds/j:item">
+	<xsl:template match="j:json[@type='articles']/j:relatedArticleIds/j:item">
 		<!-- the related articles of an article have some non-specific similarity relation -->
 		<crm:P130_shows_features_of>
 			<crm:E31_Document rdf:about="{$base-uri}resource/{.}"/>
 		</crm:P130_shows_features_of>
 	</xsl:template>
 	
-	<xsl:template match="j:json[@type='item']/j:relatedItemIds/j:item">
+	<xsl:template match="j:json[@type='items']/j:relatedItemIds/j:item">
 		<!-- the related items of an item are things with some non-specific similarity relation -->
 		<crm:P130_shows_features_of>
 			<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{.}"/>

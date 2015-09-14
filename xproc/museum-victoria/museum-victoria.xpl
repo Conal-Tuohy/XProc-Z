@@ -66,6 +66,34 @@
 				<!-- request for a "data" resource, i.e. an RDF graph -->
 				<p:when test="starts-with($relative-uri, 'data/')">
 					<p:choose>
+						<p:when test="starts-with($relative-uri, 'data/technique/')">
+							<!-- make a request to the Museum Victoria "search" API to find items
+								with a particular technique -->
+							<p:www-form-urldecode name="decoded-component">
+								<p:with-option name="value" select="
+									concat(
+										'component=',
+										substring-after($relative-uri, 'data/technique/'
+									)
+								)"/>
+							</p:www-form-urldecode>
+							<mv:make-api-call name="items-by-technique">
+								<p:with-option name="uri" select="
+									concat(
+										'search?limit=100&amp;technique=',
+										substring-after($relative-uri, 'data/technique/')
+									)
+								"/>
+							</mv:make-api-call>
+							<p:group>
+								<p:variable name="technique" select="/c:param-set/c:param[@name='component']/@value">
+									<p:pipe step="decoded-component" port="result"/>
+								</p:variable>
+								<p:add-attribute match="/*" attribute-name="technique">
+									<p:with-option name="attribute-value" select="$technique"/>
+								</p:add-attribute>
+							</p:group>
+						</p:when>
 						<p:when test="starts-with($relative-uri, 'data/taxon/')">
 							<!-- make a request to the Museum Victoria "search" API to find species
 								by taxon name -->
@@ -134,16 +162,7 @@
 					<p:group>
 						<p:variable name="type" select="substring-before(substring-after($relative-uri, 'data/'), '/')"/>
 						<p:add-attribute match="/*" attribute-name="type">
-							<p:with-option name="attribute-value" select="
-							('article', 'item', 'species', 'specimen', 'taxon', 'html')[
-								xs:integer($type='articles') +
-								xs:integer($type='items') * 2 +
-								xs:integer($type='species') * 3 +
-								xs:integer($type='specimens') * 4 +
-								xs:integer($type='taxon') * 5 +
-								xs:integer($type='html') * 6
-							]
-						"/>
+							<p:with-option name="attribute-value" select="$type"/>
 						</p:add-attribute>
 					</p:group>
 					<!-- convert the JSON (possibly including SPARQL query results) into RDF/XML -->
