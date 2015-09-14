@@ -38,9 +38,11 @@
 		<!-- list items using this technique -->
 		<xsl:for-each select="j:results/j:item">
 			<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{j:id}">
-				<crm:E41_Appellation rdf:about="{$base-uri}resource/{j:id}#objectName">
-					<rdf:value><xsl:value-of select="j:displayTitle"/></rdf:value>
-				</crm:E41_Appellation>
+				<crm:P1_is_identified_by>
+					<crm:E41_Appellation rdf:about="{$base-uri}resource/{j:id}#objectName">
+						<rdf:value><xsl:value-of select="j:displayTitle"/></rdf:value>
+					</crm:E41_Appellation>
+				</crm:P1_is_identified_by>
 				<crm:P32_used_general_technique>
 					<crm:E55_Type rdf:about="{$base-uri}resource/{$id}"/>
 				</crm:P32_used_general_technique>
