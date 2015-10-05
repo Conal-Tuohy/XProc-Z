@@ -35,18 +35,22 @@
 				</crm:E41_Appellation>
 			</crm:P1_is_identified_by>
 		</crm:E55_Type>
-		<!-- list items using this technique -->
+		<!-- list items produced using this technique -->
 		<xsl:for-each select="j:results/j:item">
-			<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{j:id}">
-				<crm:P1_is_identified_by>
-					<crm:E41_Appellation rdf:about="{$base-uri}resource/{j:id}#objectName">
-						<rdf:value><xsl:value-of select="j:displayTitle"/></rdf:value>
-					</crm:E41_Appellation>
-				</crm:P1_is_identified_by>
+			<crm:E12_Production rdf:about="{$base-uri}resource/{j:id}#creation">
 				<crm:P32_used_general_technique>
 					<crm:E55_Type rdf:about="{$base-uri}resource/{$id}"/>
 				</crm:P32_used_general_technique>
-			</crm:E22_Man-Made_Object>
+				<crm:P94_has_created>
+					<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{j:id}">
+						<crm:P1_is_identified_by>
+							<crm:E41_Appellation rdf:about="{$base-uri}resource/{j:id}#objectName">
+								<rdf:value><xsl:value-of select="j:displayTitle"/></rdf:value>
+							</crm:E41_Appellation>
+						</crm:P1_is_identified_by>
+					</crm:E22_Man-Made_Object>
+				</crm:P94_has_created>
+			</crm:E12_Production>
 		</xsl:for-each>
 	</xsl:template>
 	
@@ -238,10 +242,16 @@
 		</crm:E31_Document>
 	</xsl:template>
 	
-	<xsl:template match="j:archeologyTechnique[normalize-space()]">
-		<crm:P32_used_general_technique>
-			<crm:E55_Type rdf:about="{$base-uri}resource/technique/{encode-for-uri(lower-case(.))}"/>
-		</crm:P32_used_general_technique>
+	<!-- the archeologyTechnique of an item is the technique used in the Production of the item -->
+	<xsl:template match="j:archeologyTechnique[normalize-space()]" mode="reverse">
+		<crm:E12_Production rdf:ID="creation">
+			<crm:P32_used_general_technique>
+				<crm:E55_Type rdf:about="{$base-uri}resource/technique/{encode-for-uri(lower-case(.))}"/>
+			</crm:P32_used_general_technique>
+			<crm:P94_has_created>
+				<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{$id}"/>
+			</crm:P94_has_created>
+		</crm:E12_Production>
 	</xsl:template>
 	
 	<!--
