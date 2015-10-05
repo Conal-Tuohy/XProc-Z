@@ -36,8 +36,8 @@
 			</crm:P1_is_identified_by>
 		</crm:E55_Type>
 		<!-- list items produced using this technique -->
-		<xsl:for-each select="j:results/j:item">
-			<crm:E12_Production rdf:about="{$base-uri}resource/{j:id}#creation">
+		<xsl:for-each select="j:item">
+			<crm:E12_Production rdf:about="{$base-uri}resource/{j:id}#production">
 				<crm:P32_used_general_technique>
 					<crm:E55_Type rdf:about="{$base-uri}resource/{$id}"/>
 				</crm:P32_used_general_technique>
@@ -244,7 +244,7 @@
 	
 	<!-- the archeologyTechnique of an item is the technique used in the Production of the item -->
 	<xsl:template match="j:archeologyTechnique[normalize-space()]" mode="reverse">
-		<crm:E12_Production rdf:ID="creation">
+		<crm:E12_Production rdf:ID="production">
 			<crm:P32_used_general_technique>
 				<crm:E55_Type rdf:about="{$base-uri}resource/technique/{encode-for-uri(lower-case(.))}"/>
 			</crm:P32_used_general_technique>
