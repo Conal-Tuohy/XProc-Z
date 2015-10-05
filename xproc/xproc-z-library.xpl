@@ -115,6 +115,24 @@
 		</p:template>
 	</p:pipeline>
 	
+	<p:pipeline type="z:add-response-header">
+		<p:option name="header-name" required="true"/>
+		<p:option name="header-value" required="true"/>
+		<p:insert match="/c:response" position="first-child">
+			<p:input port="insertion">
+				<p:inline>
+					<c:header/>
+				</p:inline>
+			</p:input>
+		</p:insert>
+		<p:add-attribute match="/c:response/c:header[1]" attribute-name="name">
+			<p:with-option name="attribute-value" select="$header-name"/>
+		</p:add-attribute>
+		<p:add-attribute match="/c:response/c:header[1]" attribute-name="value">
+			<p:with-option name="attribute-value" select="$header-value"/>
+		</p:add-attribute>
+	</p:pipeline>
+	
 	<p:pipeline type="z:not-found">
 		<p:identity>
 			<p:input port="source">

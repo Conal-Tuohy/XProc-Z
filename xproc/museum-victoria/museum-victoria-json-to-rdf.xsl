@@ -45,7 +45,7 @@
 					<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{j:id}">
 						<crm:P1_is_identified_by>
 							<crm:E41_Appellation rdf:about="{$base-uri}resource/{j:id}#objectName">
-								<rdf:value><xsl:value-of select="j:displayTitle"/></rdf:value>
+								<rdf:value><xsl:value-of select="j:objectName"/></rdf:value>
 							</crm:E41_Appellation>
 						</crm:P1_is_identified_by>
 					</crm:E22_Man-Made_Object>
@@ -181,7 +181,7 @@
 		</crm:P127_has_broader_term>
 	</xsl:template>
 	
-	<xsl:template match="j:taxonName">
+	<xsl:template match="j:taxonName[normalize-space()]">
 		<crm:P1_is_identified_by>
 			<crm:E41_Appellation rdf:ID="taxonName">
 				<rdf:value><xsl:value-of select="."/></rdf:value>
@@ -196,7 +196,7 @@
 		</crm:E31_Document>
 	</xsl:template>
 	
-	<xsl:template match="j:title">
+	<xsl:template match="j:title[normalize-space()]">
 		<crm:P102_has_title>
 			<crm:E35_Title rdf:ID="title">
 				<rdf:value><xsl:value-of select="."/></rdf:value>
@@ -213,7 +213,7 @@
 		<xsl:apply-templates mode="reverse"/>
 	</xsl:template>
 	
-	<xsl:template match="j:objectName">
+	<xsl:template match="j:objectName[normalize-space()]">
 		<crm:P1_is_identified_by>
 			<crm:E41_Appellation rdf:ID="objectName">
 				<rdf:value><xsl:value-of select="."/></rdf:value>
@@ -221,13 +221,13 @@
 		</crm:P1_is_identified_by>
 	</xsl:template>
 	
-	<xsl:template match="j:objectSummary">
+	<xsl:template match="j:objectSummary[normalize-space()]">
 		<xsl:element name="mv:P3.1_objectSummary" namespace="{$base-uri}ontology#">
 			<xsl:value-of select="."/>
 		</xsl:element>
 	</xsl:template>
 	
-	<xsl:template match="j:physicalDescription">
+	<xsl:template match="j:physicalDescription[normalize-space()]">
 		<xsl:element name="mv:P3.1_physicalDescription" namespace="{$base-uri}ontology#">
 			<xsl:value-of select="."/>
 		</xsl:element>
@@ -266,7 +266,7 @@
 		</rdf:value>
 	</xsl:template>
 	-->
-	<xsl:template match="j:content">
+	<xsl:template match="j:content[normalize-space()]">
 		<frbr:R4_carriers_provided_by rdf:about="{$base-uri}data/html/{$id}"/>
 	</xsl:template>
 	

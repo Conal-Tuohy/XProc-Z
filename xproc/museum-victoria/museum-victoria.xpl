@@ -9,6 +9,7 @@
 		<p:input port="parameters" kind="parameter" primary="true"/>
 		<p:output port="result" primary="true" sequence="true"/>
 		<p:option name="relative-uri" select=" '' "/>
+		<p:variable name="accept" select="/c:request/c:header[3]/@value"/>
 					
 		<!-- generate a public URI - this pipeline could be running behind a proxy -->
 		<z:parse-request-uri name="request-uri" unproxify="true"/>
@@ -46,8 +47,10 @@
 							</p:inline>
 						</p:input>
 					</p:identity>
-					<!-- return the RDF/XML -->
-					<z:make-http-response content-type="application/rdf+xml"/>
+					<!-- return the RDF -->
+					<mv:return-rdf>
+						<p:with-option name="accept" select="$accept"/>
+					</mv:return-rdf>
 				</p:when>
 				<!-- request for HTML -->
 				<p:when test="starts-with($relative-uri, 'data/html/')">
@@ -170,8 +173,14 @@
 						<p:with-param name="public-uri" select="$public-uri"/>
 						<p:with-param name="relative-uri" select="$relative-uri"/>
 					</mv:transform>
+					<!-- set the base URI -->
+					<p:add-attribute match="/*" attribute-name="xml:base">
+						<p:with-option name="attribute-value" select="$public-uri"/>
+					</p:add-attribute>
 					<!-- return the RDF/XML -->
-					<z:make-http-response content-type="application/rdf+xml"/>
+					<mv:return-rdf>
+						<p:with-option name="accept" select="$accept"/>
+					</mv:return-rdf>
 				</p:when>
 				<p:when test="starts-with($relative-uri, 'resource/')">
 					<!-- request for a generic "resource" which we redirect to an information ("data") resource -->
@@ -285,5 +294,27 @@
 		</p:template>
 		<p:http-request/>
 	</p:declare-step>	
+	
+	<p:declare-step type="mv:return-rdf">
+		<p:input port="source"/>
+		<p:output port="result"/>
+		<p:input port="parameters" kind="parameter" primary="true"/>
+		<p:option name="accept"/>
+		<p:choose>
+			<p:when test="
+				contains($accept, 'application/ld+json') or 
+				contains($accept, 'application/json') 
+			">
+				<mv:transform xslt="rdf-xml-to-json-ld.xsl"/>
+				<z:make-http-response content-type="application/json"/>
+			</p:when>
+			<p:otherwise>
+				<z:make-http-response content-type="application/rdf+xml"/>
+				<z:add-response-header header-name="Accepted">
+					<p:with-option name="header-value" select="$accept"/>
+				</z:add-response-header>
+			</p:otherwise>
+		</p:choose>
+	</p:declare-step>
 	
 </p:library>
