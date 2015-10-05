@@ -238,7 +238,7 @@
 		</crm:E31_Document>
 	</xsl:template>
 	
-	<xsl:template match="j:archeologyTechnique">
+	<xsl:template match="j:archeologyTechnique[normalize-space()]">
 		<crm:P32_used_general_technique>
 			<crm:E55_Type rdf:about="{$base-uri}resource/technique/{encode-for-uri(lower-case(.))}"/>
 		</crm:P32_used_general_technique>
