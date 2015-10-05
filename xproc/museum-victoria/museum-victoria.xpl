@@ -302,7 +302,12 @@
 		<p:option name="accept"/>
 		<p:choose>
 			<p:when test="
-				contains($accept, 'application/ld+json') or 
+				contains($accept, 'application/ld+json')
+			">
+				<mv:transform xslt="rdf-xml-to-json-ld.xsl"/>
+				<z:make-http-response content-type="application/ld+json"/>
+			</p:when>
+			<p:when test="
 				contains($accept, 'application/json') 
 			">
 				<mv:transform xslt="rdf-xml-to-json-ld.xsl"/>
