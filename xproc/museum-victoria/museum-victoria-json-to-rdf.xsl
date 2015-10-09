@@ -5,7 +5,7 @@
 	xmlns:crm="http://erlangen-crm.org/current/"
 	xmlns:frbr="http://erlangen-crm.org/efrbroo/"
 	xmlns:html="http://www.w3.org/1999/xhtml"
-	xmlns:skos=" 	http://www.w3.org/2004/02/skos/core#"
+	xmlns:skos="http://www.w3.org/2004/02/skos/core#"
 	exclude-result-prefixes="j xs">
 	
 	<xsl:param name="public-uri"/>
@@ -30,7 +30,7 @@
 	<xsl:template match="/*[@type='technique']">
 		<crm:E55_Type rdf:about="{$base-uri}resource/{$id}">
 			<crm:P1_is_identified_by>
-				<crm:E41_Appellation rdf:ID="name">
+				<crm:E41_Appellation rdf:about="{$base-uri}resource/{$id}#name">
 					<rdf:value><xsl:value-of select="@technique"/></rdf:value>
 				</crm:E41_Appellation>
 			</crm:P1_is_identified_by>
@@ -198,7 +198,7 @@
 	
 	<xsl:template match="j:title[normalize-space()]">
 		<crm:P102_has_title>
-			<crm:E35_Title rdf:ID="title">
+			<crm:E35_Title rdf:about="{$base-uri}resource/{$id}#title">
 				<rdf:value><xsl:value-of select="."/></rdf:value>
 			</crm:E35_Title>
 		</crm:P102_has_title>
@@ -215,7 +215,7 @@
 	
 	<xsl:template match="j:objectName[normalize-space()]">
 		<crm:P1_is_identified_by>
-			<crm:E41_Appellation rdf:ID="objectName">
+			<crm:E41_Appellation rdf:about="{$base-uri}resource/{$id}#objectName">
 				<rdf:value><xsl:value-of select="."/></rdf:value>
 			</crm:E41_Appellation>
 		</crm:P1_is_identified_by>
@@ -244,7 +244,7 @@
 	
 	<!-- the archeologyTechnique of an item is the technique used in the Production of the item -->
 	<xsl:template match="j:archeologyTechnique[normalize-space()]" mode="reverse">
-		<crm:E12_Production rdf:ID="production">
+		<crm:E12_Production rdf:about="{$base-uri}resource/{$id}#production">
 			<crm:P32_used_general_technique>
 				<crm:E55_Type rdf:about="{$base-uri}resource/technique/{encode-for-uri(lower-case(.))}"/>
 			</crm:P32_used_general_technique>
