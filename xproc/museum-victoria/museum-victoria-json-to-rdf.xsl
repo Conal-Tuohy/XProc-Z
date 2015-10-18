@@ -90,14 +90,10 @@
 				<xsl:with-param name="taxa" select="$relevant-taxa"/>
 			</xsl:call-template>
 		</crm:E55_Type>
-		<xsl:variable name="species" select="j:results/j:item"/>
+		<xsl:variable name="species" select="j:item"/>
 		<xsl:for-each select="$species">
 			<crm:E55_Type rdf:about="{$base-uri}resource/{j:id}">
-				<crm:P1_is_identified_by>
-					<crm:E41_Appellation rdf:ID="{translate(j:id, '/', '-')}">
-						<rdf:value><xsl:value-of select="substring-before(substring-after(j:displayTitle, '&lt;em&gt;'), '&lt;/em&gt;')"/></rdf:value>
-					</crm:E41_Appellation>
-				</crm:P1_is_identified_by>
+				<xsl:apply-templates select="j:taxonomy/j:taxonName"/>
 				<crm:P127_has_broader_term rdf:resource="{$base-uri}resource/taxon/{local-name($taxon)}-{$taxon}"/>
 			</crm:E55_Type>
 		</xsl:for-each>

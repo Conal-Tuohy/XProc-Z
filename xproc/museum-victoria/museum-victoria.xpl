@@ -110,7 +110,7 @@
 							</mv:make-api-call>
 							<!-- now make a request for the first one of those species -->
 							<mv:make-api-call name="representative-species-for-taxon">
-								<p:with-option name="uri" select="/j:json/j:results/j:item[1]/j:id"/>
+								<p:with-option name="uri" select="/j:json/j:item[1]/j:id"/>
 							</mv:make-api-call>
 							<!-- insert the "species" result document into the "search" result document -->
 							<p:insert position="first-child">
