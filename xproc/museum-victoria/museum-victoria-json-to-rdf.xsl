@@ -93,6 +93,9 @@
 		<xsl:variable name="species" select="j:item"/>
 		<xsl:for-each select="$species">
 			<crm:E55_Type rdf:about="{$base-uri}resource/{j:id}">
+				<xsl:attribute name="xml:base">
+					<xsl:value-of select="concat($base-uri, 'resource/', j:id)"/>
+				</xsl:attribute>
 				<xsl:apply-templates select="j:taxonomy/j:taxonName"/>
 				<crm:P127_has_broader_term rdf:resource="{$base-uri}resource/taxon/{local-name($taxon)}-{$taxon}"/>
 			</crm:E55_Type>
@@ -105,13 +108,16 @@
 		<xsl:variable name="super-taxon" select="$taxa[2]"/>
 		<xsl:if test="$taxon">
 			<crm:P1_is_identified_by>
-				<crm:E41_Appellation rdf:ID="{local-name($taxon)}">
+				<crm:E41_Appellation rdf:ID="taxonName">
 					<rdf:value><xsl:value-of select="$taxon"/></rdf:value>
 				</crm:E41_Appellation>
 			</crm:P1_is_identified_by>
 			<xsl:if test="$super-taxon">
 				<crm:P127_has_broader_term>
 					<crm:E55_Type rdf:about="{$base-uri}resource/taxon/{local-name($super-taxon)}-{$super-taxon}">
+						<xsl:attribute name="xml:base">
+							<xsl:value-of select="concat($base-uri, 'resource/taxon/', local-name($super-taxon), '-', $super-taxon)"/>
+						</xsl:attribute>
 						<xsl:call-template name="render-taxonomic-hierarchy">
 							<xsl:with-param name="taxa" select="subsequence($taxa, 2)"/>
 						</xsl:call-template>
