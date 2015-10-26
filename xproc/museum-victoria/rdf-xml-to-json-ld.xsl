@@ -35,10 +35,10 @@
 		<xsl:text>"</xsl:text>
 		<xsl:value-of select="concat(namespace-uri(.), local-name(.))"/>
 		<xsl:text>": </xsl:text> 
-		<xsl:apply-templates select="* | text()[normalize-space()] | @rdf:about | @rdf:ID" mode="subject-or-object"/>
+		<xsl:apply-templates select="* | text()[normalize-space()] | @rdf:about | @rdf:ID | @rdf:resource" mode="subject-or-object"/>
 	</xsl:template>
 	
-	<xsl:template match="@rdf:about" mode="subject-or-object">
+	<xsl:template match="@rdf:about | @rdf:resource" mode="subject-or-object">
 		{
 			"@id": "<xsl:value-of select="resolve-uri(., (ancestor-or-self::*/@xml:base)[1])"/>"
 		}
