@@ -119,6 +119,8 @@ private class RunnablePipeline implements Runnable {
 				pipeline.setParameter(name, new RuntimeValue(parameters.get(name)));
 			}
 			getServletContext().log("Passing input document (http request) to pipeline...");
+			//  TODO for debug logging only
+//			getServletContext().log(inputDocument.toString());
 			pipeline.writeTo("source", inputDocument);
 			getServletContext().log("Actually executing the pipeline...");
 			pipeline.run(); 	
@@ -139,10 +141,12 @@ private class RunnablePipeline implements Runnable {
 			// generate HTTP Response from pipeline output
 			if (httpResponse != null) {
 				// an HTTP client is waiting on a response - the pipelines's first output document is asssumed to specify that response
-				getServletContext().log("Sending HTTP response: " + String.valueOf(outputDocument.axisIterator(Axis.CHILD).next()));
+				getServletContext().log("Sending pipeline result as HTTP response");
 				respond(httpResponse, outputDocument);
 			}
-			
+			if (httpResponse == null) {
+				getServletContext().log("Pipeline first response ignored");
+			}			
 			while (result.moreDocuments()) {
 				// subsequent documents are callbacks to the pipeline
 				getServletContext().log("Reading subsequent results from pipeline...");
@@ -151,9 +155,9 @@ private class RunnablePipeline implements Runnable {
 				//XdmNode rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD).next();
 				//while (! (rootElement.getNodeKind().equals(net.sf.saxon.s9api.XdmNodeKind.ELEMENT))) {
 				//rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD).next();
-					getServletContext().log("Recursively calling pipeline...");
+					getServletContext().log("Launching asynchronous pipeline...");
 					new Thread(new RunnablePipeline(outputDocument)).start();
-					getServletContext().log("Returned from recursively calling pipeline.");
+					getServletContext().log("Pipeline launched.");
 				//}
 
 			}
