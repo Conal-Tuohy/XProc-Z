@@ -89,10 +89,12 @@
 		</p:xslt>
 	</p:pipeline>
 	
-	<p:pipeline type="z:make-http-response" name="make-http-response">
+	<p:declare-step type="z:make-http-response" name="make-http-response">
 		<p:documentation>
 			Wraps its input in a c:response element in order to make an HTTP response.
 		</p:documentation>
+		<p:input port="source"/>
+		<p:output port="result"/>
 		<p:option name="status" select=" '200' "/>
 		<p:option name="content-type" select=" 'application/xml' "/>
 		<p:in-scope-names name="parameters"/>
@@ -113,7 +115,7 @@
 				<p:pipe step="parameters" port="result"/>
 			</p:input>
 		</p:template>
-	</p:pipeline>
+	</p:declare-step>
 	
 	<p:pipeline type="z:add-response-header">
 		<p:option name="header-name" required="true"/>

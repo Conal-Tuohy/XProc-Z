@@ -1,4 +1,6 @@
-<p:declare-step xmlns:p="http://www.w3.org/ns/xproc" xmlns:c="http://www.w3.org/ns/xproc-step" xmlns:z="https://github.com/Conal-Tuohy/XProc-Z" xmlns:ex="https://github.com/Conal-Tuohy/XProc-Z/tree/master/xproc/examples" 	xmlns:mv="tag:conaltuohy.com,2015:museum-victoria" version="1.0" name="main">
+<p:declare-step xmlns:p="http://www.w3.org/ns/xproc" xmlns:c="http://www.w3.org/ns/xproc-step" xmlns:z="https://github.com/Conal-Tuohy/XProc-Z" xmlns:ex="https://github.com/Conal-Tuohy/XProc-Z/tree/master/xproc/examples" 
+xmlns:corbicula="tag:conaltuohy.com,2015:corbicula"
+xmlns:mv="tag:conaltuohy.com,2015:museum-victoria" version="1.0" name="main">
 
 
 	<p:input port='source' primary='true'/>
@@ -28,11 +30,10 @@
 	<p:import href="examples/menu.xpl"/>
 	<p:import href="examples/file.xpl"/>
 	<p:import href="examples/feed-reader.xpl"/>
-	<p:import href="oai-harvest.xpl"/>
-	<!--
-	-->
 	<p:import href="visualize-collation/visualize-collation.xpl"/>
 	<p:import href="test.xpl"/>
+	<p:import href="when-test.xpl"/>
+	<p:import href="oai-pmh/harvest.xpl"/>
 	<!--
 	under development
 	-->
@@ -43,6 +44,15 @@
 	<p:choose>
 		<p:when test=" $relative-uri = '' ">
 			<ex:menu/>
+		</p:when>
+		<!-- testing the use of pipeline bifurcation steps as boolean control constructs
+		<p:when test="starts-with($relative-uri, 'choice')">
+			<z:choice-test/>
+		</p:when>-->
+		<p:when test="starts-with($relative-uri, 'oai-harvest/')">
+			<corbicula:handle-harvest-request>
+				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'oai-harvest/')"/>
+			</corbicula:handle-harvest-request>
 		</p:when>
 		<p:when test="starts-with($relative-uri, 'museum-victoria/')">
 			<mv:museum-victoria>
@@ -66,19 +76,12 @@
 				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'upload-download/')"/>
 			</ex:file-upload-and-download>
 		</p:when>
-		<p:when test="starts-with($relative-uri, 'oai-harvest/')">
-			<oai:harvester xmlns:oai="tag:conaltuohy.com,2014:oai-harvest">
-				<p:with-option name="relative-uri" select="substring-after($relative-uri, 'oai-harvest/')"/>
-			</oai:harvester>
-		</p:when>
 		<p:when test="starts-with($relative-uri, 'trampoline-test/')">
 			<z:trampoline-test/>
 		</p:when>
 		<p:when test="starts-with($relative-uri, 'xslt-safety-test/')">
 			<z:xslt-safety-test/>
 		</p:when>
-		<!--
-		-->
 		<!--
 		<p:when test="starts-with($relative-uri, 'form-test/')">
 			<z:form-test/>
