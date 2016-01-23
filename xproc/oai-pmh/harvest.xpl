@@ -213,9 +213,16 @@
 					<p:document href="rif-cs-to-rdf.xsl"/>
 				</p:input>
 			</p:xslt>
+			<!-- cache the graph as a local file (for debugging cross-walk) -->
+			<p:store name="save-graph">
+				<p:with-option name="href" select="concat($cache, '/', encode-for-uri($identifier), '.rdf')"/>
+			</p:store>
 			<corbicula:store-graph>
 				<p:with-option name="graph-store" select="$graph-store"/>
 				<p:with-option name="graph-uri" select="$identifier"/>
+				<p:input port="source">
+					<p:pipe step="rdf" port="result"/>
+				</p:input>
 			</corbicula:store-graph>
 		</p:for-each>			
 
@@ -481,7 +488,22 @@
 	
 	
 	
-	
+	<p:declare-step type="corbicula:sparql-update" name="sparql-update">
+		<p:option name="sparql-update-uri"/>
+		<p:option name="query"/>
+		<p:template name="construct-deletion-request">
+			<p:with-param name="sparql-update" select="$sparql-update"/>
+			<p:with-param name="query" select="$query"/>
+			<p:input port="template">
+				<p:inline>
+					<c:request href="{$sparql-update}" method="POST">
+						<c:body content-type="application/sparql-update">{$query}</c:body>
+					</c:request>
+				</p:inline>
+			</p:input>
+		</p:template>
+		<p:http-request/>
+	</p:declare-step>
 	
 	<!-- delete graph -->
 	<p:declare-step type="corbicula:delete-graph" name="delete-graph">
