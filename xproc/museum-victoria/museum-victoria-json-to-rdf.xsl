@@ -41,7 +41,7 @@
 				<crm:P32_used_general_technique>
 					<crm:E55_Type rdf:about="{$base-uri}resource/{$id}"/>
 				</crm:P32_used_general_technique>
-				<crm:P94_has_created>
+				<crm:P108_has_produced>
 					<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{j:id}">
 						<crm:P1_is_identified_by>
 							<crm:E41_Appellation rdf:about="{$base-uri}resource/{j:id}#objectName">
@@ -49,7 +49,7 @@
 							</crm:E41_Appellation>
 						</crm:P1_is_identified_by>
 					</crm:E22_Man-Made_Object>
-				</crm:P94_has_created>
+				</crm:P108_has_produced>
 			</crm:E12_Production>
 		</xsl:for-each>
 	</xsl:template>
@@ -250,9 +250,9 @@
 			<crm:P32_used_general_technique>
 				<crm:E55_Type rdf:about="{$base-uri}resource/technique/{encode-for-uri(lower-case(.))}"/>
 			</crm:P32_used_general_technique>
-			<crm:P94_has_created>
+			<crm:P108_has_produced>
 				<crm:E22_Man-Made_Object rdf:about="{$base-uri}resource/{$id}"/>
-			</crm:P94_has_created>
+			</crm:P108_has_produced>
 		</crm:E12_Production>
 	</xsl:template>
 	
