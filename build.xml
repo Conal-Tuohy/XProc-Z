@@ -49,7 +49,7 @@
 
 	<target name="compile" depends="init">
 		<echo>Compiling Java source files ...</echo>
-		<javac srcdir="src" destdir="build/webapp/WEB-INF/classes" includeAntRuntime="false" debug="true" debuglevel="lines,vars,source">
+		<javac srcdir="src" destdir="build/webapp/WEB-INF/classes" includeAntRuntime="false" debug="true" debuglevel="lines,vars,source" source="1.7" target="1.7">
 			<classpath>
 				<fileset dir="lib">
 					<include name="**/*.jar"/>
