@@ -32,7 +32,6 @@ xmlns:mv="tag:conaltuohy.com,2015:museum-victoria" version="1.0" name="main">
 	<p:import href="examples/feed-reader.xpl"/>
 	<p:import href="visualize-collation/visualize-collation.xpl"/>
 	<p:import href="test.xpl"/>
-	<p:import href="when-test.xpl"/>
 	<p:import href="oai-pmh/harvest.xpl"/>
 	<!--
 	under development
