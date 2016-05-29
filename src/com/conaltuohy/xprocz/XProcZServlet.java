@@ -1,4 +1,6 @@
 package com.conaltuohy.xprocz;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -111,7 +113,7 @@ private class RunnablePipeline implements Runnable {
 			getServletContext().log("Running pipeline...");
 			
 			getServletContext().log("Initializing pipeline...");
-			Input input = new Input(getServletContext().getRealPath("/xproc/xproc-z.xpl"));
+			Input input = getMainPipelineInput();
 			XPipeline pipeline = runtime.load(input);
 			getServletContext().log("Passing parameters to pipeline...");
 			// attach parameters from the application's environment
@@ -230,6 +232,12 @@ private class RunnablePipeline implements Runnable {
     	 return document;
     }
     
+    private void setNonNullAttribute(Element element, String attributeName, String attributeValue) {
+	if (attributeValue != null) {
+		element.setAttribute(attributeName, attributeValue); 
+	}
+    }
+    
     private XdmNode getRequestDocument(HttpServletRequest req) 
     	throws ParserConfigurationException, SAXException, IOException, ServletException {
     	 	// Create a document describing the HTTP request,
@@ -266,13 +274,10 @@ private class RunnablePipeline implements Runnable {
 			request.setAttribute("href", requestURI);
 			request.setAttribute("detailed", "true");
 			request.setAttribute("status-only", "false");
-			if (req.getRemoteUser() != null) {
-				request.setAttribute("username", req.getRemoteUser()); 
-				// NB password not available; pipeline would need to process the Authorization header
-			};
-			if (req.getAuthType() != null) {
-				request.setAttribute("auth-method", req.getAuthType()); 
-			};
+			setNonNullAttribute(request, "username", req.getRemoteUser());
+			// NB password not available; pipeline would need to process the Authorization header
+			
+			setNonNullAttribute(request, "auth-method", req.getAuthType()); 
 			
 			// the HTTP request headers
 			for (String name : Collections.list(req.getHeaderNames())) {	
@@ -298,22 +303,18 @@ private class RunnablePipeline implements Runnable {
 					Element body = requestXML.createElementNS(XPROC_STEP_NS, "c:body");
 					multipart.appendChild(body);			
 					String partContentType = part.getContentType();
+					// The http client may legitimately not send part headers, but for politeness we
+					// supply the XProc pipeline with an explicit Content-Type, because 
+					// rfc1341 says that absent headers imply "plain US-ASCII text"
+					// https://www.w3.org/Protocols/rfc1341/7_2_Multipart.html
 					if (partContentType == null) {
-						partContentType = "text/plain";
-					}
-					String disposition = part.getHeader("Content-Disposition");
-					if (disposition != null) {
-						body.setAttribute("disposition", disposition);
+						partContentType = "text/plain; charset=US-ASCII";
 					}
 					body.setAttribute("content-type", partContentType);
-					String contentId = part.getHeader("Content-ID");
-					if (contentId != null) {
-						body.setAttribute("id", contentId);
-					}
-					String contentDescription = part.getHeader("Content-Description");
-					if (contentDescription != null) {
-						body.setAttribute("description", contentDescription);
-					}
+					setNonNullAttribute(body, "disposition", part.getHeader("Content-Disposition"));
+					setNonNullAttribute(body, "id", part.getHeader("Content-ID"));
+					setNonNullAttribute(body, "description", part.getHeader("Content-Description"));
+						
 					// TODO allow badly formed XML content to fall back to being processed as text
 					// insert the actual content of the part
 					if (isXMLMediaType(partContentType)) {
@@ -355,7 +356,7 @@ private class RunnablePipeline implements Runnable {
 				body.setAttribute("content-type", req.getContentType());
 				String contentType = req.getContentType();
 				if (isXMLMediaType(contentType)) {
-					// TODO if it's XML then parse it and place root element inside
+					// if it's XML then parse it and place root element inside
 					// <c:body content-type="application/rdf+xml"><rdf:RDF etc.../></c:body>
 					Document uploadedDocument = parseXML(req.getInputStream());
 					// TODO also import top-level comments, processing instructions, etc?
@@ -375,8 +376,8 @@ private class RunnablePipeline implements Runnable {
 					);
 					inputStream.close();
 				} else {
-				// ... or if binary then base64 encode it 
-				// <c:body content-type="application/pdf" encoding = "base64">...</c:body>
+					// ... or if binary then base64 encode it 
+					// <c:body content-type="application/pdf" encoding = "base64">...</c:body>
 					body.setAttribute("encoding", "base64");
 					InputStream inputStream = req.getInputStream();
 					body.appendChild(
@@ -541,6 +542,24 @@ private class RunnablePipeline implements Runnable {
 				mediaType.endsWith("+xml")
 			)
 		);
+	}
+	
+	private Input getMainPipelineInput() throws SecurityException, FileNotFoundException {
+		try {
+			return getPipelineInput(getServletContext().getInitParameter("xproc-z.main"));
+		} catch (Exception e) {
+			return getPipelineInput(getServletContext().getRealPath("/xproc/xproc-z.xpl"));
+		}
+	}
+	
+	private Input getPipelineInput(String filename) throws SecurityException, FileNotFoundException {
+		File file = new File(filename);
+		if (file.isFile() && file.canRead()) {
+			getServletContext().log("Loading main pipeline from " + file);
+			return new Input(filename);
+		} else {
+			throw new FileNotFoundException("Pipeline " + file + " not found");
+		}
 	}
 	
 	// Read text from the input stream

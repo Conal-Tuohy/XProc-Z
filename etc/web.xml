@@ -7,9 +7,9 @@
 	<description>An XML processing web service</description>
 	<!--  any Context parameters? -->
 	<context-param>
-		<param-name>name</param-name>
-		<param-value>value</param-value>
-		<description>An example parameter called "name" with a value of "value"</description>
+		<param-name>xproc-z.main</param-name>
+		<param-value>/opt/xproc-z/xproc-z.xpl</param-value>
+		<description>The location of xproc-z's main pipeline</description>
 	</context-param>
 	<servlet>
 		<servlet-name>xproc-z</servlet-name>
