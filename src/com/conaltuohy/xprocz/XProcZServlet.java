@@ -516,6 +516,9 @@ private class RunnablePipeline implements Runnable {
 	* Determine whether content is, or can be treated as, plain text
 	*/
 	private boolean isTextMediaType(String mediaType) {
+		if (mediaType == null) {
+			return false;
+		}
 		return (
 			mediaType.startsWith("text/") ||
 			mediaType.equals("application/x-www-form-urlencoded") ||
@@ -532,6 +535,9 @@ private class RunnablePipeline implements Runnable {
 	* See <a href="https://tools.ietf.org/html/rfc7303">RFC7303</a>
 	*/
 	private boolean isXMLMediaType(String mediaType) {
+		if (mediaType == null) {
+			return false;
+		}
 		return (
 			mediaType.equals("application/xml") ||
 			mediaType.equals("application/xml-external-parsed-entity") ||
