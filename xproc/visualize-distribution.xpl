@@ -117,7 +117,7 @@
 													<button type="submit" name="visualize" value="visualize">Visualize</button>
 												</p>
 												<!-- the manuscripts are the links to .xml files -->
-												<xsl:variable name="manuscripts" select="//html:pre//html:a[contains(@href, '.xml')]"/>
+												<xsl:variable name="manuscripts" select="//html:table//html:td/html:a[contains(@href, '.xml')]"/>
 												<select name="file" multiple="multiple" size="{count($manuscripts)}">
 													<xsl:for-each select="$manuscripts">
 														<option><xsl:value-of select="."/></option>
