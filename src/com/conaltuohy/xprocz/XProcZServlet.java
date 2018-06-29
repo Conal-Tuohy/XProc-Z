@@ -71,7 +71,7 @@ import javax.servlet.annotation.MultipartConfig;
 import javax.xml.parsers.ParserConfigurationException;
 /**
  * Servlet implementation class XProcZServlet
- * The RetailerServlet is a host for HTTP server applications written in XProc.
+ * The XProcZServlet is a host for HTTP server applications written in XProc.
  */
 @MultipartConfig
 public class XProcZServlet extends HttpServlet {
@@ -522,6 +522,7 @@ private class RunnablePipeline implements Runnable {
 		return (
 			mediaType.startsWith("text/") ||
 			mediaType.equals("application/x-www-form-urlencoded") ||
+			mediaType.equals("application/json") ||
 			(
 				mediaType.startsWith("application/") && 
 				mediaType.endsWith("+json")
