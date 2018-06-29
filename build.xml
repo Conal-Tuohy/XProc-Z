@@ -5,7 +5,7 @@
      XProc-Z    
      An XML transforming web proxy, by Conal Tuohy                                                                
      ====================================================================== -->
-<project name="Retailer" default="war">
+<project name="XProc-Z" default="war">
 
 	<property file="ant/build.properties"/>
 	<description>XProc-Z is an XML processing web proxy.</description>
@@ -30,10 +30,7 @@
 		<mkdir dir="build/webapp/WEB-INF/classes"/>		
 		<mkdir dir="build/webapp/WEB-INF/lib"/>
 		<echo>Installing XML Calabash libraries ...</echo>
-		<get src="https://github.com/Conal-Tuohy/xmlcalabash1/releases/download/1.1.11-ctuohy/xmlcalabash-1.1.11-96.zip" dest="build/calabash.zip" skipexisting="true"/>
-		<!--
-		<get src="https://github.com/ndw/xmlcalabash1/releases/download/1.1.9-96/xmlcalabash-1.1.9-96.zip" dest="build/calabash.zip" skipexisting="true"/>
-		-->
+		<get src="https://github.com/ndw/xmlcalabash1/releases/download/1.1.21-98/xmlcalabash-1.1.21-98.zip" dest="build/calabash.zip" skipexisting="true"/>
 		<unzip src="build/calabash.zip" dest="build/lib">
 			<patternset>
 				<include name="**/*.jar"/>
