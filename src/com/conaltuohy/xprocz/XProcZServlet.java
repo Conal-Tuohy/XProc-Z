@@ -88,7 +88,7 @@ public class XProcZServlet extends HttpServlet {
 	private final static DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 	private DocumentBuilder builder;
 	
-	private XProcRuntime runtime = new XProcRuntime(new XProcConfiguration());
+	//private XProcRuntime runtime = new XProcRuntime(new XProcConfiguration());
 	private Map<QName, String> parameters = new HashMap<QName, String>();
     /**
      * @see HttpServlet#HttpServlet()
@@ -101,10 +101,13 @@ private class RunnablePipeline implements Runnable {
 	Exception e = null; 
 	XdmNode inputDocument = null;
 	HttpServletResponse httpResponse = null;
-	RunnablePipeline(XdmNode inputDocument) { 	
+	XProcRuntime runtime = null;
+	RunnablePipeline(XProcRuntime runtime, XdmNode inputDocument) { 
+		this.runtime = runtime;
 		this.inputDocument = inputDocument; 	
 	}
-	RunnablePipeline(XdmNode inputDocument, HttpServletResponse httpResponse) { 	
+	RunnablePipeline(XProcRuntime runtime, XdmNode inputDocument, HttpServletResponse httpResponse) { 
+		this.runtime = runtime;	
 		this.inputDocument = inputDocument; 	
 		this.httpResponse = httpResponse;
 	} 
@@ -158,7 +161,9 @@ private class RunnablePipeline implements Runnable {
 				//while (! (rootElement.getNodeKind().equals(net.sf.saxon.s9api.XdmNodeKind.ELEMENT))) {
 				//rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD).next();
 					getServletContext().log("Launching asynchronous pipeline...");
-					new Thread(new RunnablePipeline(outputDocument)).start();
+					// TODO handle threading issue; need new runtime instances for these pipelines, after the first
+					// (since the main pipeline has now finished, and its runtime can be safely reused
+					new Thread(new RunnablePipeline(runtime, outputDocument)).start();
 					getServletContext().log("Pipeline launched.");
 				//}
 
@@ -238,8 +243,9 @@ private class RunnablePipeline implements Runnable {
 	}
     }
     
-    private XdmNode getRequestDocument(HttpServletRequest req) 
+    private XdmNode getRequestDocument(XProcRuntime runtime, HttpServletRequest req) 
     	throws ParserConfigurationException, SAXException, IOException, ServletException {
+    		// TODO finish migrating from W3 DOM to Saxon XDM
     	 	// Create a document describing the HTTP request,
 		// from request parameters, headers, etc.
 		// to be the input document for the XProc pipeline.
@@ -458,15 +464,14 @@ private class RunnablePipeline implements Runnable {
 	@Override
 	public void service(HttpServletRequest req, HttpServletResponse resp)
 			throws ServletException, IOException {
-		
-
 		try {
+			XProcRuntime runtime = new XProcRuntime(new XProcConfiguration());
 			// marshal the HTTP request into an XdmNode as a c:request document
-			XdmNode inputDocument = getRequestDocument(req);
+			XdmNode inputDocument = getRequestDocument(runtime, req);
 			// Process the XML document which describes the HTTP request, 
 			// sending the result to the HTTP client
 			
-			RunnablePipeline pipeline = new RunnablePipeline(inputDocument, resp);
+			RunnablePipeline pipeline = new RunnablePipeline(runtime, inputDocument, resp);
 			pipeline.run();
 			// this is clunky ... TODO replace with a call to pipeline.runReportingAnyErrors() throws Exception. Pipeline.run() should call 
 			// that same method and swallow (log) errors
