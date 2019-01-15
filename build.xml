@@ -15,6 +15,40 @@
 		<fileset dir="build/lib" includes="*.jar"/>
 	</path>
 
+	<!-- this target is only run if the 'version' property is undefined -->
+	<target name="update-version-string" depends="-timestamp" unless="version">
+			  <!-- get a new version string using git describe if possible -->
+			  <echo message="Updating version string..."/>
+			  <exec executable="git" outputproperty="url" failifexecutionfails="false">
+						 <arg value="ls-remote"/>
+						 <arg value="--get-url"/>
+			  </exec>
+			  <exec executable="git" outputproperty="version" failifexecutionfails="false">
+						 <arg value="describe"/>
+						 <arg value="--tags"/>
+			  </exec>
+			  <antcall target="-store-version-string"/>
+			  <!-- ensure version is defined even if git was not available -->
+			  <property file="build/webapp/WEB-INF/classes/xproc-z-build.properties"/>
+	</target>
+	
+	<target name="-timestamp">
+			  <tstamp>
+						 <format property="timestamp" pattern="yyyy-MM-dd'T'HH:mm'Z'"/>
+						 <format property="build.date" pattern="yyyy-MM-dd"/>
+			  </tstamp>
+	</target>
+	
+	<target name="-store-version-string" depends="-timestamp" if="version">
+			  <!-- store the new  version string in the correct property file -->
+			  <echo message="version=${version}"/>
+			  <propertyfile file="build/webapp/WEB-INF/classes/xproc-z-build.properties">
+						 <entry key="version" value="${version}"/>
+						 <entry key="url" value="${url}"/>
+						 <entry key="timestamp" value="${timestamp}"/>
+						 <entry key="build.date" value="${build.date}"/>
+			  </propertyfile>
+	</target>
 	
 	<target name="clean">
 		<echo>Cleaning the build and dist directories</echo>
@@ -30,7 +64,10 @@
 		<mkdir dir="build/webapp/WEB-INF/classes"/>		
 		<mkdir dir="build/webapp/WEB-INF/lib"/>
 		<echo>Installing XML Calabash libraries ...</echo>
+		<!--
 		<get src="https://github.com/ndw/xmlcalabash1/releases/download/1.1.21-98/xmlcalabash-1.1.21-98.zip" dest="build/calabash.zip" skipexisting="true"/>
+		-->
+		<get src="file:///usr/src/xmlcalabash1/build/distributions/xmlcalabash-1.1.23-98.zip" dest="build/calabash.zip" skipexisting="true"/>
 		<unzip src="build/calabash.zip" dest="build/lib">
 			<patternset>
 				<include name="**/*.jar"/>

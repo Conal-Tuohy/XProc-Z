@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Enumeration;
 import java.util.Properties;
+import com.xmlcalabash.util.XProcSystemPropertySet;
 import com.xmlcalabash.core.XProcException;
 
 import org.apache.commons.codec.binary.Base64;
@@ -81,6 +82,7 @@ public class XProcZServlet extends HttpServlet {
 	private static final String SERVLET_CONTEXT_NS = "tag:conaltuohy.com,2015:servlet-context";
 	private static final String OS_ENVIRONMENT_VARIABLES_NS = "tag:conaltuohy.com,2015:os-environment-variables";
 	private static final String JAVA_SYSTEM_PROPERTIES_NS = "tag:conaltuohy.com,2015:java-system-properties";
+	private static final String XPROC_Z_SYSTEM_PROPERTIES_NS = "tag:conaltuohy.com,2019:xproc-z-system-properties";
 	
 	private static final String XPROC_STEP_NS = "http://www.w3.org/ns/xproc-step";
 	
@@ -90,89 +92,117 @@ public class XProcZServlet extends HttpServlet {
 	
 	//private XProcRuntime runtime = new XProcRuntime(new XProcConfiguration());
 	private Map<QName, String> parameters = new HashMap<QName, String>();
-    /**
-     * @see HttpServlet#HttpServlet()
-     */
-     public XProcZServlet() {
-        super();
-    }
-    
-private class RunnablePipeline implements Runnable {
-	Exception e = null; 
-	XdmNode inputDocument = null;
-	HttpServletResponse httpResponse = null;
-	XProcRuntime runtime = null;
-	RunnablePipeline(XProcRuntime runtime, XdmNode inputDocument) { 
-		this.runtime = runtime;
-		this.inputDocument = inputDocument; 	
+	private XProcZSystemPropertySet xproczSystemPropertySet = new XProcZSystemPropertySet();
+	
+	/**
+	 * @see HttpServlet#HttpServlet()
+	 */
+	 public XProcZServlet() {
+		super();
 	}
-	RunnablePipeline(XProcRuntime runtime, XdmNode inputDocument, HttpServletResponse httpResponse) { 
-		this.runtime = runtime;	
-		this.inputDocument = inputDocument; 	
-		this.httpResponse = httpResponse;
-	} 
-	public void run() { 	
-		try { 	
-			getServletContext().log("Running pipeline...");
-			
-			getServletContext().log("Initializing pipeline...");
-			Input input = getMainPipelineInput();
-			XPipeline pipeline = runtime.load(input);
-			getServletContext().log("Passing parameters to pipeline...");
-			// attach parameters from the application's environment
-			for (QName name : parameters.keySet()) {
-				pipeline.setParameter(name, new RuntimeValue(parameters.get(name)));
+    
+	private class XProcZSystemPropertySet implements XProcSystemPropertySet {
+		private Properties properties = new Properties();
+		private XProcZSystemPropertySet() {
+			try {
+				InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream("/xproc-z-build.properties");
+				properties.load(inputStream);
+			} catch(Exception e){
+				System.out.println("xproc-z-build.properties not found in classpath");
 			}
-			getServletContext().log("Passing input document (http request) to pipeline...");
-			//  TODO for debug logging only
-//			getServletContext().log(inputDocument.toString());
-			pipeline.writeTo("source", inputDocument);
-			getServletContext().log("Actually executing the pipeline...");
-			pipeline.run(); 	
+		};
+		public String systemProperty(XProcRuntime runtime, QName propertyName) throws XProcException {
+			String uri = propertyName.getNamespaceURI();
+			String local = propertyName.getLocalName();
 
-			// TODO read multiple result documents
-			// The first is a c:response - use it make http response to client.
-			// Remaining documents are inputs for subsequent executions - spawn separate threads to execute
-			// the pipeline to handle each of these documents, and discarding any results.
-			// This allows XProc-Z to execute multiple asynchronous long-running processes.
-			
-			// See https://github.com/ndw/xmlcalabash1/blob/saxon96/src/main/java/com/xmlcalabash/drivers/Main.java#L425
-			
-			getServletContext().log("Reading results from pipeline...");
-			ReadablePipe result = pipeline.readFrom("result");
-			getServletContext().log("Reading first result from pipeline...");
-			XdmNode outputDocument = result.read();
-			
-			// generate HTTP Response from pipeline output
-			if (httpResponse != null) {
-				// an HTTP client is waiting on a response - the pipelines's first output document is asssumed to specify that response
-				getServletContext().log("Sending pipeline result as HTTP response");
-				respond(httpResponse, outputDocument);
+			if (uri.equals(XPROC_Z_SYSTEM_PROPERTIES_NS)) {
+				return properties.getProperty(local);
+			} else {
+				return null;
 			}
-			if (httpResponse == null) {
-				getServletContext().log("Pipeline first response ignored");
-			}			
-			while (result.moreDocuments()) {
-				// subsequent documents are callbacks to the pipeline
-				getServletContext().log("Reading subsequent results from pipeline...");
-				outputDocument = result.read();
-				getServletContext().log("Pipeline produced extra document: " + outputDocument.toString());
-				//XdmNode rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD).next();
-				//while (! (rootElement.getNodeKind().equals(net.sf.saxon.s9api.XdmNodeKind.ELEMENT))) {
-				//rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD).next();
-					getServletContext().log("Launching asynchronous pipeline...");
-					// TODO handle threading issue; need new runtime instances for these pipelines, after the first
-					// (since the main pipeline has now finished, and its runtime can be safely reused
-					new Thread(new RunnablePipeline(runtime, outputDocument)).start();
-					getServletContext().log("Pipeline launched.");
+		}
+	};
+
+    
+	private class RunnablePipeline implements Runnable {
+		Exception e = null; 
+		XdmNode inputDocument = null;
+		HttpServletResponse httpResponse = null;
+		XProcRuntime runtime = null;
+		RunnablePipeline(XProcRuntime runtime, XdmNode inputDocument) { 
+			this.runtime = runtime;
+			this.inputDocument = inputDocument; 	
+		}
+		RunnablePipeline(XProcRuntime runtime, XdmNode inputDocument, HttpServletResponse httpResponse) { 
+			this.runtime = runtime;	
+			this.inputDocument = inputDocument; 	
+			this.httpResponse = httpResponse;
+		} 
+		public void run() { 	
+			try { 	
+				//getServletContext().log("Running pipeline...");
+				
+				//getServletContext().log("Initializing pipeline...");
+				Input input = getMainPipelineInput();
+				XPipeline pipeline = runtime.load(input);
+				//getServletContext().log("Passing parameters to pipeline...");
+				// attach parameters from the application's environment
+				for (QName name : parameters.keySet()) {
+					pipeline.setParameter(name, new RuntimeValue(parameters.get(name)));
+				}
+				//getServletContext().log("Passing input document (http request) to pipeline...");
+				//  TODO for debug logging only
+	//			getServletContext().log(inputDocument.toString());
+				pipeline.writeTo("source", inputDocument);
+				//getServletContext().log("Actually executing the pipeline...");
+				pipeline.run(); 	
+	
+				// TODO read multiple result documents
+				// The first is a c:response - use it make http response to client.
+				// Remaining documents are inputs for subsequent executions - spawn separate threads to execute
+				// the pipeline to handle each of these documents, and discarding any results.
+				// This allows XProc-Z to execute multiple asynchronous long-running processes.
+				
+				//getServletContext().log("Reading results from pipeline...");
+				ReadablePipe result = pipeline.readFrom("result");
+				//getServletContext().log("Reading first result from pipeline...");
+				XdmNode outputDocument = result.read();
+				
+				// generate HTTP Response from pipeline output
+				if (httpResponse != null) {
+					// an HTTP client is waiting on a response - the pipelines's first output document is asssumed to specify that response
+					//getServletContext().log("Sending pipeline result as HTTP response");
+					respond(httpResponse, outputDocument);
+				}
+				//if (httpResponse == null) {
+				//	getServletContext().log("Pipeline first response ignored");
 				//}
-
-			}
-		} catch (Exception e) { 	
-			this.e = e; 	
+				if (result.moreDocuments()) {
+					while (result.moreDocuments()) {
+						// subsequent documents are callbacks to the pipeline
+						//getServletContext().log("Reading subsequent results from pipeline...");
+						outputDocument = result.read();
+						//getServletContext().log("Pipeline produced extra document: " + outputDocument.toString());
+						//XdmNode rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD).next();
+						//while (! (rootElement.getNodeKind().equals(net.sf.saxon.s9api.XdmNodeKind.ELEMENT))) {
+						//rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD).next();
+							//getServletContext().log("Launching asynchronous pipeline...");
+							// TODO handle threading issue; need new runtime instances for these pipelines, after the first
+							// (since the main pipeline has now finished, and its runtime can be safely reused
+							new Thread(new RunnablePipeline(runtime, outputDocument)).start();
+							//getServletContext().log("Pipeline launched.");
+						//}
+					}
+				} else {
+					// no more pipelines to run
+					runtime.close();
+					this.runtime = null;
+				}
+			} catch (Exception e) { 	
+				this.e = e; 
+			} 	
 		} 	
-	} 	
-};    
+	};    
 
 	private void addParameter(String prefix, String xmlns, String localName, String value) {
 		QName name = new QName(prefix, xmlns, purifyForXML(localName));
@@ -466,6 +496,8 @@ private class RunnablePipeline implements Runnable {
 			throws ServletException, IOException {
 		try {
 			XProcRuntime runtime = new XProcRuntime(new XProcConfiguration());
+			runtime.addSystemPropertySet(xproczSystemPropertySet);
+
 			// marshal the HTTP request into an XdmNode as a c:request document
 			XdmNode inputDocument = getRequestDocument(runtime, req);
 			// Process the XML document which describes the HTTP request, 
