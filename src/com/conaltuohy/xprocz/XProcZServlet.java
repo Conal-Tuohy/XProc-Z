@@ -57,6 +57,7 @@ import com.xmlcalabash.util.Input;
 import com.xmlcalabash.runtime.XPipeline;
 import com.xmlcalabash.model.RuntimeValue;
 import net.sf.saxon.s9api.Processor;
+import net.sf.saxon.s9api.Serializer;
 import net.sf.saxon.s9api.XdmNode;
 import com.xmlcalabash.io.ReadablePipe;
 import java.io.OutputStreamWriter;
@@ -172,7 +173,7 @@ public class XProcZServlet extends HttpServlet {
 				if (httpResponse != null) {
 					// an HTTP client is waiting on a response - the pipelines's first output document is asssumed to specify that response
 					//getServletContext().log("Sending pipeline result as HTTP response");
-					respond(httpResponse, outputDocument);
+					respond(runtime.getProcessor(), httpResponse, outputDocument);
 				}
 				//if (httpResponse == null) {
 				//	getServletContext().log("Pipeline first response ignored");
@@ -429,9 +430,11 @@ public class XProcZServlet extends HttpServlet {
 			return inputDocument;
     }
 
-    private void respond(HttpServletResponse resp, XdmNode outputDocument) throws IOException {
+    private void respond(Processor processor, HttpServletResponse resp, XdmNode outputDocument) throws IOException, SaxonApiException {
 			// Create a stream to send response XML to the HTTP client
 			OutputStream os = resp.getOutputStream();
+			Serializer serializer = processor.newSerializer(resp.getOutputStream());
+			serializer.setCloseOnCompletion(true);
 			QName responseName = new QName(XPROC_STEP_NS, "response");
 			XdmNode rootElement = (XdmNode) outputDocument.axisIterator(Axis.CHILD, responseName).next();
 			String statusAttribute = rootElement.getAttributeValue( new QName("status"));
@@ -455,32 +458,30 @@ public class XProcZServlet extends HttpServlet {
 				if (contentDisposition != null) {
 					resp.addHeader("Content-Disposition", contentDisposition);
 				}
-				XdmSequenceIterator content = bodyElement.axisIterator(Axis.CHILD);
 				resp.setContentType(contentType);
 				if ("base64".equals(encoding)) {
 					// decode base64 encoded binary data and stream to http client
 					os.write(
 						Base64.decodeBase64(
-							content.next().toString()
+							bodyElement.getStringValue()
 						)
 					);
-				} else if (isXMLMediaType(contentType)) {
-					// output the sequence of XML nodes within the c:body element using toString to
-					// produce an XML serialization of each one
-					OutputStreamWriter writer = new OutputStreamWriter(os);
-					while (content.hasNext()) {
-						XdmItem contentItem = content.next();
-						writer.write(contentItem.toString());
-					}
-					writer.flush();
 				} else {
-					// output plain text content within the c:body element by writing its string value
-					OutputStreamWriter writer = new OutputStreamWriter(os);
-					while (content.hasNext()) {
-						XdmItem contentItem = content.next();
-						writer.write(contentItem.getStringValue());
+					// serialize the content of the body element as an XDM document
+					serializer.setOutputProperty(Serializer.Property.MEDIA_TYPE, contentType);
+					if (isXMLMediaType(contentType)) {
+						serializer.setOutputProperty(Serializer.Property.METHOD, "xml");
+					} else if (isHTMLMediaType(contentType)) {
+						serializer.setOutputProperty(Serializer.Property.METHOD, "html");
+						serializer.setOutputProperty(Serializer.Property.HTML_VERSION, "5");
+					} else {
+						serializer.setOutputProperty(Serializer.Property.METHOD, "text");
 					}
-					writer.flush();
+					XdmSequenceIterator content = bodyElement.axisIterator(Axis.CHILD);
+					while (content.hasNext()) {
+						XdmNode contentNode = (XdmNode) content.next();
+						serializer.serializeNode(contentNode);
+					}
 				}
 			}
 	}
@@ -587,6 +588,17 @@ public class XProcZServlet extends HttpServlet {
 			)
 		);
 	}
+	
+	/**
+	* Determine whether content is HTML
+	* See <a href="https://tools.ietf.org/html/rfc7303">RFC7303</a>
+	*/
+	private boolean isHTMLMediaType(String mediaType) {
+		if (mediaType == null) {
+			return false;
+		}
+		return mediaType.equals("text/html");
+	}			
 	
 	private Input getMainPipelineInput() throws SecurityException, FileNotFoundException {
 		try {
