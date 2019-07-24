@@ -466,6 +466,7 @@ public class XProcZServlet extends HttpServlet {
 							bodyElement.getStringValue()
 						)
 					);
+					os.close();
 				} else {
 					// serialize the content of the body element as an XDM document
 					serializer.setOutputProperty(Serializer.Property.MEDIA_TYPE, contentType);
@@ -482,6 +483,7 @@ public class XProcZServlet extends HttpServlet {
 						XdmNode contentNode = (XdmNode) content.next();
 						serializer.serializeNode(contentNode);
 					}
+					serializer.close();
 				}
 			}
 	}
