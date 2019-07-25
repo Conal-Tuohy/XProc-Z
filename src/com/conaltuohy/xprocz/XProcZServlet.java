@@ -478,10 +478,15 @@ public class XProcZServlet extends HttpServlet {
 					} else {
 						serializer.setOutputProperty(Serializer.Property.METHOD, "text");
 					}
+					// Serialize the nodes
 					XdmSequenceIterator content = bodyElement.axisIterator(Axis.CHILD);
 					while (content.hasNext()) {
 						XdmNode contentNode = (XdmNode) content.next();
 						serializer.serializeNode(contentNode);
+						// NB since there may be multiple child items (e.g. comments, white space, pi, etc)
+						// we refrain from emitting these markers after the first child has been serialized
+						serializer.setOutputProperty(Serializer.Property.BYTE_ORDER_MARK, "no");
+						serializer.setOutputProperty(Serializer.Property.OMIT_XML_DECLARATION, "yes");
 					}
 					serializer.close();
 				}
