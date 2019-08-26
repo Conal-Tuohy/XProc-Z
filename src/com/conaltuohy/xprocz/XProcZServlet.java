@@ -473,7 +473,7 @@ public class XProcZServlet extends HttpServlet {
 					if (isXMLMediaType(contentType)) {
 						serializer.setOutputProperty(Serializer.Property.METHOD, "xml");
 					} else if (isHTMLMediaType(contentType)) {
-						serializer.setOutputProperty(Serializer.Property.METHOD, "html");
+						serializer.setOutputProperty(Serializer.Property.METHOD, "xhtml");
 						serializer.setOutputProperty(Serializer.Property.HTML_VERSION, "5");
 					} else {
 						serializer.setOutputProperty(Serializer.Property.METHOD, "text");
