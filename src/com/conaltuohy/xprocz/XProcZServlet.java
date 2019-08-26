@@ -86,6 +86,7 @@ public class XProcZServlet extends HttpServlet {
 	private static final String XPROC_Z_SYSTEM_PROPERTIES_NS = "tag:conaltuohy.com,2019:xproc-z-system-properties";
 	
 	private static final String XPROC_STEP_NS = "http://www.w3.org/ns/xproc-step";
+	private static final String HTML_NS = "http://www.w3.org/1999/xhtml";
 	
 	private final static SAXTransformerFactory transformerFactory = (SAXTransformerFactory) TransformerFactory.newInstance();
 	private final static DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -473,8 +474,16 @@ public class XProcZServlet extends HttpServlet {
 					if (isXMLMediaType(contentType)) {
 						serializer.setOutputProperty(Serializer.Property.METHOD, "xml");
 					} else if (isHTMLMediaType(contentType)) {
-						serializer.setOutputProperty(Serializer.Property.METHOD, "xhtml");
-						serializer.setOutputProperty(Serializer.Property.HTML_VERSION, "5");
+						// HTML content may be in the form of an element tree,
+						// or it may be text "&lt;html&gt;" etc.
+						QName htmlName = new QName(HTML_NS, "html");
+						XdmSequenceIterator htmlIterator = bodyElement.axisIterator(Axis.CHILD, htmlName);
+						if (htmlIterator.hasNext()) {
+							serializer.setOutputProperty(Serializer.Property.METHOD, "xhtml");
+							serializer.setOutputProperty(Serializer.Property.HTML_VERSION, "5");
+						} else {
+							serializer.setOutputProperty(Serializer.Property.METHOD, "text");
+						}
 					} else {
 						serializer.setOutputProperty(Serializer.Property.METHOD, "text");
 					}
