@@ -11,6 +11,7 @@
 >
 	<!-- import calabash extension library to enable use of delete-file step -->
 	<p:import href="http://xmlcalabash.com/extension/steps/library-1.0.xpl"/>
+	<p:import href="../xproc-z-library.xpl"/>
 	
 	<!-- the harvest step should have "delete" and "update" sequence output ports,
 	and also a "high-water-mark" output port that emits either zero or one document

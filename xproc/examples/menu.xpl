@@ -7,6 +7,7 @@
 	xmlns:html="http://www.w3.org/1999/xhtml">
 	
 	<p:import href="../xproc-z-library.xpl"/>
+	<p:import href="feed-reader.xpl"/>
 	
 	<p:pipeline type="ex:menu" name="menu">
 		<p:option name="relative-uri" select="''"/>
