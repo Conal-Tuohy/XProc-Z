@@ -64,7 +64,7 @@
 		<mkdir dir="build/webapp/WEB-INF/classes"/>		
 		<mkdir dir="build/webapp/WEB-INF/lib"/>
 		<echo>Installing XML Calabash libraries ...</echo>
-		<get src="https://github.com/ndw/xmlcalabash1/releases/download/1.3.2-99/xmlcalabash-1.3.2-99.zip" dest="build/calabash.zip" skipexisting="true"/>
+		<get src="https://github.com/ndw/xmlcalabash1/releases/download/1.4.1-100/xmlcalabash-1.4.1-100.zip" dest="build/calabash.zip" skipexisting="true"/>
 		<unzip src="build/calabash.zip" dest="build/lib">
 			<patternset>
 				<include name="**/*.jar"/>
