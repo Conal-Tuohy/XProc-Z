@@ -8,7 +8,7 @@
 	<!--  any Context parameters? -->
 	<context-param>
 		<param-name>xproc-z.main</param-name>
-		<param-value>/opt/xproc-z/xproc-z.xpl</param-value>
+		<param-value>/etc/xproc-z/xproc-z.xpl</param-value>
 		<description>The location of xproc-z's main pipeline</description>
 	</context-param>
 	<servlet>
