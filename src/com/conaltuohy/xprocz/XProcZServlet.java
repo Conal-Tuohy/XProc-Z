@@ -35,6 +35,7 @@ import javax.xml.XMLConstants;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
+import javax.xml.transform.SourceLocator;
 import javax.xml.transform.Templates;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -157,7 +158,20 @@ public class XProcZServlet extends HttpServlet {
 	//			getServletContext().log(inputDocument.toString());
 				pipeline.writeTo("source", inputDocument);
 				//getServletContext().log("Actually executing the pipeline...");
-				pipeline.run(); 	
+				try {
+					pipeline.run();
+				} catch (SaxonApiException e) {
+					throw new RuntimeException(
+						"Error " + e.getErrorCode() + " in " + e.getSystemId() + "; " + e.getLineNumber() + "\n\n" + e.getMessage(), 
+						e
+					);
+				} catch (XProcException e) {
+					SourceLocator locator = e.getLocator();
+					throw new RuntimeException(
+						"Error " + e.getErrorCode() + " in " + locator.getSystemId() + "; " + locator.getLineNumber() + ":" + locator.getColumnNumber() + "\n\n" + e.getMessage(), 
+						e
+					);
+				}
 	
 				// TODO read multiple result documents
 				// The first is a c:response - use it make http response to client.
@@ -216,7 +230,10 @@ public class XProcZServlet extends HttpServlet {
 	* Remove characters which are invalid or discouraged in XML
 	*/
 	private String purifyForXML(String text) {
-		return text.replaceAll("[^\\u0009\\u000a\\u000d\\u0020-\\ud7ff\\ue000-\\ufffd]", "");
+		if (text == null)
+			return "";
+		else
+			return text.replaceAll("[^\\u0009\\u000a\\u000d\\u0020-\\ud7ff\\ue000-\\ufffd]", "");
 	}
 	
     public void init() throws ServletException {
@@ -627,7 +644,7 @@ public class XProcZServlet extends HttpServlet {
 	private Input getPipelineInput(String filename) throws SecurityException, FileNotFoundException {
 		File file = new File(filename);
 		if (file.isFile() && file.canRead()) {
-			getServletContext().log("Loading main pipeline from " + file);
+			getServletContext().log("Loading pipeline from " + file);
 			return new Input(filename);
 		} else {
 			throw new FileNotFoundException("Pipeline " + file + " not found");
