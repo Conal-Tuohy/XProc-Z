@@ -434,4 +434,89 @@
 			<p:http-request cx:depends-on="zip" xmlns:cx="http://xmlcalabash.com/ns/extensions"/>
 		</p:group>
 	</p:declare-step>
+	
+	<p:declare-step type="z:route" name="route">
+		<p:documentation>
+			A URI-routing step based on "level 1" URI templates https://datatracker.ietf.org/doc/html/rfc6570
+			
+			Takes a c:request document as input, and a uri-template which may or may not match the request URI.. 
+			
+			If the specified HTTP request matches the URI template, then the "matched" port will contain a copy of the input,
+			and the "uri-variables" port will contain a c:parameters document listing the variables extracted from the URI using the URI template,
+			otherwise the "uri-variables" and "matched" ports will be empty, and the "unmatched" port will output a copy of the "input" port.
+			
+			The step is instended to be used several times as direct siblings; if the first step fails to match the request to its template, it will
+			pass the request to the following step which will get a chance to match, and so on. The first step which does produce a match will 
+			produce an output on the "matched" port, and subsequent steps attached to that port will run and can process the HTTP request.
+			
+			URI Templates are conceived of primarily as a macro-expansion mechanism, for interpolating a set if variables into a URI template 
+			to produce a URI. This step inverts that process, by using a template to parse a URI and extract a set of variables from it. 
+			Note that for some URI templates and variables, the operation of generating and then parsing a URI may not yield the original set
+			of variables, i.e. the parsing is not necessarily an inversion of the expansion. 
+		</p:documentation>
+		<p:option name="uri-template" required="true"/>
+		<p:input port="source"/>
+		<p:output port="matched" sequence="true">
+			<p:pipe step="request-matched" port="result"/>
+		</p:output>
+		<p:output port="unmatched" primary="true" sequence="true">
+			<p:pipe step="request-unmatched" port="result"/>
+		</p:output>
+		<p:output port="variables" sequence="true">
+			<p:pipe step="variables" port="result"/>
+		</p:output>
+		<p:for-each name="parsed-variables">
+			<p:output port="result"/>
+			<p:xslt>
+				<p:with-param name="uri-template" select="$uri-template"/>
+				<p:input port="source">
+					<p:pipe step="route" port="source"/>
+				</p:input>
+				<p:input port="stylesheet">
+					<p:document href="xproc-z-library/route.xsl"/>
+				</p:input>
+			</p:xslt>
+		</p:for-each>
+		<p:for-each name="request-matched">
+			<p:output port="result" sequence="true"/>
+			<p:iteration-source select="/c:parameters">
+				<p:pipe step="parsed-variables" port="result"/>
+			</p:iteration-source>
+			<p:identity>
+				<p:input port="source">
+					<p:pipe step="route" port="source"/>
+				</p:input>
+			</p:identity>
+		</p:for-each>
+		<p:for-each name="request-unmatched">
+			<p:output port="result" sequence="true"/>
+			<p:iteration-source select="/*[not(self::c:parameters)]">
+				<p:pipe step="parsed-variables" port="result"/>
+			</p:iteration-source>
+			<p:identity>
+				<p:input port="source">
+					<p:pipe step="route" port="source"/>
+				</p:input>
+			</p:identity>
+		</p:for-each>
+		<p:for-each name="variables">
+			<p:output port="result" sequence="true"/>
+			<p:iteration-source select="/c:parameters">
+				<p:pipe step="parsed-variables" port="result"/>
+			</p:iteration-source>
+			<p:identity/>
+		</p:for-each>
+	</p:declare-step>
+	
+	<p:declare-step name="dump" type="z:dump">
+		<p:input port="source"/>
+		<p:output port="result">
+			<p:pipe step="dump" port="source"/>
+		</p:output>
+		<p:option name="href" required="true"/>
+		<p:store>
+			<p:with-option name="href" select="$href"/>
+		</p:store>
+	</p:declare-step>
+	
 </p:library>
