@@ -29,9 +29,11 @@
 								<body>
 									<h1>XProc-Z Samples</h1>
 									<!-- reference to the "XProc-Z" RSS feed from the conaltuohy.com blog will be transcluded -->
+									<!--
 									<div class="sidebar">
 										<a href="http://conaltuohy.com/blog/tag/xproc-z/feed/" type="application/rss+xml"/>
 									</div>
+									-->
 									<div class="main">
 										<div class="sample">
 											<h2><a href="tei-viz/">Visualization of the distribution of illustrations in TEI-encoded manuscripts ▶</a></h2>

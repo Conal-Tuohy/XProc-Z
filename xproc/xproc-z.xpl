@@ -40,8 +40,70 @@ xmlns:mv="tag:conaltuohy.com,2015:museum-victoria" version="1.0" name="main">
 	
 	<p:variable name="relative-uri" select="substring-after(/c:request/@href, '/xproc-z/')"/>
 	
+<!--
+			<z:route uri-template="{protocol}://{hostname}/xproc-z/route-test/{value}" name="route-test"/>
+			-->
 
 	<p:choose>
+		<p:when test=" starts-with($relative-uri, 'route-test') ">
+			<z:route name="route-a" uri-template="{scheme}://{origin}/{path}route-test/A/{A-value}/?{query}"/>
+			<z:route name="route-b" uri-template="{scheme}://{origin}/{path}route-test/B/{B-value}/?{query}"/>
+			<z:route name="route-c" uri-template="{scheme}://{origin}/{path}route-test/C/{C-value}/?{query}"/>
+			<p:identity name="no-routes-matched"/>
+			
+			<p:for-each name="pipeline-not-found">
+				<p:output port="result"/>
+				<p:iteration-source>
+					<p:pipe step="no-routes-matched" port="result"/>
+				</p:iteration-source>
+				<z:not-found/>
+			</p:for-each>
+			
+			<p:for-each name="pipeline-a">
+				<p:output port="result"/>
+				<p:iteration-source>
+					<p:pipe step="route-a" port="matched"/>
+				</p:iteration-source>
+				<z:make-http-response>
+					<p:input port="source">
+						<p:pipe step="route-a" port="variables"/>
+					</p:input>
+				</z:make-http-response>
+			</p:for-each>
+			
+			<p:for-each name="pipeline-b">
+				<p:output port="result"/>
+				<p:iteration-source>
+					<p:pipe step="route-b" port="matched"/>
+				</p:iteration-source>
+				<z:make-http-response>
+					<p:input port="source">
+						<p:pipe step="route-b" port="variables"/>
+					</p:input>
+				</z:make-http-response>
+			</p:for-each>
+			
+			<p:for-each name="pipeline-c">
+				<p:output port="result"/>
+				<p:iteration-source>
+					<p:pipe step="route-c" port="matched"/>
+				</p:iteration-source>
+				<z:make-http-response>
+					<p:input port="source">
+						<p:pipe step="route-c" port="variables"/>
+					</p:input>
+				</z:make-http-response>
+			</p:for-each>
+			
+			<p:identity name="gather-pipeline-responses">
+				<p:input port="source">
+					<p:pipe step="pipeline-not-found" port="result"/>
+					<p:pipe step="pipeline-a" port="result"/>
+					<p:pipe step="pipeline-b" port="result"/>
+					<p:pipe step="pipeline-c" port="result"/>
+				</p:input>
+			</p:identity>
+		</p:when>
 		<p:when test=" $relative-uri = '' ">
 			<ex:menu/>
 		</p:when>
