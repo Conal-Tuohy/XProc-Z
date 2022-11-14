@@ -95,6 +95,11 @@ public class XProcZServlet extends HttpServlet {
 	//private XProcRuntime runtime = new XProcRuntime(new XProcConfiguration());
 	private Map<QName, String> parameters = new HashMap<QName, String>();
 	private XProcZSystemPropertySet xproczSystemPropertySet = new XProcZSystemPropertySet();
+	private ServletInitSystemPropertySet servletInitSystemPropertySet = new ServletInitSystemPropertySet();
+	private ApplicationInitSystemPropertySet applicationInitSystemPropertySet = new ApplicationInitSystemPropertySet();
+	private ServletContextSystemPropertySet servletContextSystemPropertySet = new ServletContextSystemPropertySet();
+	private OSEnvironmentVariablesSystemPropertySet osEnvironmentVariablesSystemPropertySet = new OSEnvironmentVariablesSystemPropertySet();
+	private JavaSystemPropertiesSystemPropertySet javaSystemPropertiesSystemPropertySet = new JavaSystemPropertiesSystemPropertySet();
 	
 	/**
 	 * @see HttpServlet#HttpServlet()
@@ -124,8 +129,68 @@ public class XProcZServlet extends HttpServlet {
 			}
 		}
 	};
-
-    
+	private class ServletInitSystemPropertySet implements XProcSystemPropertySet {
+		public String systemProperty(XProcRuntime runtime, QName propertyName) throws XProcException {
+			String ns = propertyName.getNamespaceURI();
+			String name = propertyName.getLocalName();
+			if (ns.equals(SERVLET_INIT_PARAMETERS_NS)) {
+				return getServletConfig().getInitParameter(name);
+			} else {
+				return null;
+			}
+		}
+	}
+	private class ApplicationInitSystemPropertySet implements XProcSystemPropertySet {
+		public String systemProperty(XProcRuntime runtime, QName propertyName) throws XProcException {
+			String ns = propertyName.getNamespaceURI();
+			String name = propertyName.getLocalName();
+			if (ns.equals(APPLICATION_INIT_PARAMETERS_NS)) {
+				return getServletContext().getInitParameter(name);
+			} else {
+				return null;
+			}
+		}
+	}
+	private class OSEnvironmentVariablesSystemPropertySet implements XProcSystemPropertySet {
+		public String systemProperty(XProcRuntime runtime, QName propertyName) throws XProcException {
+			String ns = propertyName.getNamespaceURI();
+			String name = propertyName.getLocalName();
+			if (ns.equals(OS_ENVIRONMENT_VARIABLES_NS)) {
+				return System.getenv().get(name);
+			} else {
+				return null;
+			}
+		}
+	}    
+	private class JavaSystemPropertiesSystemPropertySet implements XProcSystemPropertySet {
+		public String systemProperty(XProcRuntime runtime, QName propertyName) throws XProcException {
+			String ns = propertyName.getNamespaceURI();
+			String name = propertyName.getLocalName();
+			if (ns.equals(JAVA_SYSTEM_PROPERTIES_NS)) {
+				return System.getProperty(name);
+			} else {
+				return null;
+			}
+		}
+	}    
+	private class ServletContextSystemPropertySet implements XProcSystemPropertySet {
+		public String systemProperty(XProcRuntime runtime, QName propertyName) throws XProcException {
+			String ns = propertyName.getNamespaceURI();
+			String name = propertyName.getLocalName();
+			if (ns.equals(SERVLET_CONTEXT_NS)) {
+				switch (name) {
+					case "contextPath":
+						return getServletContext().getContextPath();
+					case "realPath":
+						return getServletContext().getRealPath("");
+					default:
+						return null;
+				}
+			} else {
+				return null;
+			}
+		}
+	}    
 	private class RunnablePipeline implements Runnable {
 		Exception e = null; 
 		XdmNode inputDocument = null;
@@ -502,6 +567,20 @@ public class XProcZServlet extends HttpServlet {
 			}
 	}
 	
+	/** 
+	* Create a new runtime to execute a service request
+	*/
+	private XProcRuntime newRuntime() {
+		XProcRuntime runtime = new XProcRuntime(new XProcConfiguration());
+		runtime.addSystemPropertySet(xproczSystemPropertySet);
+		runtime.addSystemPropertySet(servletInitSystemPropertySet);
+		runtime.addSystemPropertySet(applicationInitSystemPropertySet);
+		runtime.addSystemPropertySet(servletContextSystemPropertySet);
+		runtime.addSystemPropertySet(osEnvironmentVariablesSystemPropertySet);
+		runtime.addSystemPropertySet(javaSystemPropertiesSystemPropertySet);
+		return runtime;
+	}
+	
     /** Respond to an HTTP request using an XProc pipeline.
 	* • Create an XML document representing the HTTP request
 	* • Transform the document using the XProc pipeline, returning the 
@@ -512,8 +591,7 @@ public class XProcZServlet extends HttpServlet {
 	public void service(HttpServletRequest req, HttpServletResponse resp)
 			throws ServletException, IOException {
 		try {
-			XProcRuntime runtime = new XProcRuntime(new XProcConfiguration());
-			runtime.addSystemPropertySet(xproczSystemPropertySet);
+			XProcRuntime runtime = newRuntime();
 
 			// marshal the HTTP request into an XdmNode as a c:request document
 			XdmNode inputDocument = getRequestDocument(runtime, req);

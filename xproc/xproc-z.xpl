@@ -30,6 +30,7 @@ xmlns:mv="tag:conaltuohy.com,2015:museum-victoria" version="1.0" name="main">
 	<p:import href="examples/menu.xpl"/>
 	<p:import href="examples/file.xpl"/>
 	<p:import href="examples/feed-reader.xpl"/>
+	<p:import href="examples/xproc-system-properties.xpl"/>
 	<p:import href="visualize-collation/visualize-collation.xpl"/>
 	<p:import href="test.xpl"/>
 	<p:import href="oai-pmh/harvest.xpl"/>
@@ -63,6 +64,9 @@ xmlns:mv="tag:conaltuohy.com,2015:museum-victoria" version="1.0" name="main">
 		</p:when>
 		<p:when test="starts-with($relative-uri, 'echo/')">
 			<ex:echo/>
+		</p:when>
+		<p:when test="starts-with($relative-uri, 'system-properties/')">
+			<ex:system-properties/>
 		</p:when>
 		<p:when test="starts-with($relative-uri, 'tei-viz/')">
 			<v:visualize-distribution xmlns:v="https://github.com/leoba/distributionVis"/>

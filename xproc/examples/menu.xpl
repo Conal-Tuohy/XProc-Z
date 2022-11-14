@@ -45,6 +45,12 @@
 											<h2><a href="upload-download/">Upload a file and receive the same file in response ▶</a></h2>
 											<p>This sample provides a form for uploading a file. On receipt of a file upload, the sample app returns the very same file. The sample demonstrates how to deal with XML, plain text (including e.g. JSON and CSV), and binary files.</p>
 										</div>
+										<div class="sample">
+											<h2><a href="system-properties/">System Properties</a></h2>
+											<p>This example shows how to use the 
+											<a href="https://www.w3.org/TR/xproc/#f.system-property"><code>system-property</code></a> function
+											to access information about the environment in which the XProc pipeline is running.</p>
+										</div>
 									</div>
 								</body>
 							</html>
