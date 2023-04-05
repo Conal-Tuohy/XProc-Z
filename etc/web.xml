@@ -5,15 +5,13 @@
 <web-app>
 	<display-name>XProc-Z</display-name>
 	<description>An XML processing web service</description>
-	<!--  any Context parameters? -->
-	<context-param>
-		<param-name>xproc-z.main</param-name>
-		<param-value>/etc/xproc-z/xproc-z.xpl</param-value>
-		<description>The location of xproc-z's main pipeline</description>
-	</context-param>
 	<servlet>
 		<servlet-name>xproc-z</servlet-name>
 		<servlet-class>com.conaltuohy.xprocz.XProcZServlet</servlet-class>
+		<init-param>
+			<param-name>xproc-z.main</param-name>
+			<param-value>/etc/xproc-z/xproc-z.xpl</param-value>
+		</init-param>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>xproc-z</servlet-name>
