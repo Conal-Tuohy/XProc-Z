@@ -124,7 +124,10 @@ public class XProcZServlet extends HttpServlet {
 			String local = propertyName.getLocalName();
 
 			if (uri.equals(XPROC_Z_SYSTEM_PROPERTIES_NS)) {
-				return properties.getProperty(local);
+				if (local.equals("xproc-z.main"))
+					return getMainPipelineFilename();
+				else
+					return properties.getProperty(local);
 			} else {
 				return null;
 			}
@@ -711,12 +714,19 @@ public class XProcZServlet extends HttpServlet {
 		return mediaType.equals("text/html");
 	}			
 	
+	private String getMainPipelineFilename() {
+		// The file location is provided by a servlet context parameter, or a servlet inititialization parameter.
+		String filename = getServletContext().getInitParameter("xproc-z.main");
+		if (filename == null) filename = getServletConfig().getInitParameter("xproc-z.main");
+		if (filename == null) filename = getServletContext().getRealPath("/xproc/xproc-z.xpl");
+		return filename;
+	}
+	
 	private Input getMainPipelineInput() throws SecurityException, FileNotFoundException {
-		try {
-			return getPipelineInput(getServletContext().getInitParameter("xproc-z.main"));
-		} catch (Exception e) {
-			return getPipelineInput(getServletContext().getRealPath("/xproc/xproc-z.xpl"));
-		}
+		/*
+		Load the main pipeline from a file.
+		*/
+		return getPipelineInput(getMainPipelineFilename());
 	}
 	
 	private Input getPipelineInput(String filename) throws SecurityException, FileNotFoundException {
