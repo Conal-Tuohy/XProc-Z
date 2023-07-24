@@ -18,9 +18,10 @@ import java.util.Enumeration;
 import java.util.Properties;
 import com.xmlcalabash.util.XProcSystemPropertySet;
 import com.xmlcalabash.core.XProcException;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import org.apache.commons.codec.binary.Base64;
-
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -241,7 +242,7 @@ public class XProcZServlet extends HttpServlet {
 					);
 				}
 	
-				// TODO read multiple result documents
+				// Read multiple result documents
 				// The first is a c:response - use it make http response to client.
 				// Remaining documents are inputs for subsequent executions - spawn separate threads to execute
 				// the pipeline to handle each of these documents, and discarding any results.
@@ -421,17 +422,33 @@ public class XProcZServlet extends HttpServlet {
 				multipart.setAttribute("content-type", req.getContentType());
 				request.appendChild(multipart);
 				multipart.setAttribute("boundary", boundary); 
+
+				// HTML form processing has the convention that a field named _charset_ can be used to specify the charset
+				// https://datatracker.ietf.org/doc/html/rfc7578#section-4.6
+				Part charsetPart = req.getPart("_charset_");
+				String declaredPartCharset = null;
+				if (charsetPart != null) {
+					declaredPartCharset = getPartStringContent(charsetPart, "utf-8");
+				}
+				String defaultPartCharset;
+				if (declaredPartCharset == null) {
+					defaultPartCharset = "utf-8";
+				} else {
+					defaultPartCharset = declaredPartCharset;
+				}
+				String defaultContentType = "text/plain; charset=" + defaultPartCharset;
+                
 				// for each part, create a c:body
 				for (Part part: req.getParts()) {
 					Element body = requestXML.createElementNS(XPROC_STEP_NS, "c:body");
-					multipart.appendChild(body);			
+					multipart.appendChild(body);
 					String partContentType = part.getContentType();
 					// The http client may legitimately not send part headers, but for politeness we
 					// supply the XProc pipeline with an explicit Content-Type, because 
 					// rfc1341 says that absent headers imply "plain US-ASCII text"
 					// https://www.w3.org/Protocols/rfc1341/7_2_Multipart.html
 					if (partContentType == null) {
-						partContentType = "text/plain; charset=US-ASCII";
+						partContentType = defaultContentType;
 					}
 					body.setAttribute("content-type", partContentType);
 					setNonNullAttribute(body, "disposition", part.getHeader("Content-Disposition"));
@@ -452,13 +469,10 @@ public class XProcZServlet extends HttpServlet {
 					} else if (isTextMediaType(partContentType)) {
 						// otherwise if text then copy it unparsed
 						// <c:body content-type="text/plain">This &amp; that</c:body>
-						InputStream inputStream = part.getInputStream();
+						String text = getPartStringContent(part, defaultPartCharset);
 						body.appendChild(
-							requestXML.createTextNode(
-								readText(inputStream, getCharacterEncoding(req))
-							)
+							requestXML.createTextNode(text)
 						);
-						inputStream.close();
 					} else {
 						// Base64 encode binary data
 						body.setAttribute("encoding", "base64");
@@ -664,6 +678,15 @@ public class XProcZServlet extends HttpServlet {
 		}
 	}
 	
+	private String getMediaTypeWithoutParameters(String mediaType) {
+		int semicolonIndex = mediaType.indexOf(';');
+		if (semicolonIndex == -1) {
+			return mediaType;
+		} else {
+			return mediaType.substring(0, semicolonIndex);
+		}
+	}
+	
 	/**
 	* Determine whether content is, or can be treated as, plain text
 	*/
@@ -671,13 +694,14 @@ public class XProcZServlet extends HttpServlet {
 		if (mediaType == null) {
 			return false;
 		}
+		String mediaTypeWithoutParameters = getMediaTypeWithoutParameters(mediaType);
 		return (
-			mediaType.startsWith("text/") ||
-			mediaType.equals("application/x-www-form-urlencoded") ||
-			mediaType.equals("application/json") ||
+			mediaTypeWithoutParameters.startsWith("text/") ||
+			mediaTypeWithoutParameters.equals("application/x-www-form-urlencoded") ||
+			mediaTypeWithoutParameters.equals("application/json") ||
 			(
-				mediaType.startsWith("application/") && 
-				mediaType.endsWith("+json")
+				mediaTypeWithoutParameters.startsWith("application/") && 
+				mediaTypeWithoutParameters.endsWith("+json")
 			)
 		);
 	}
@@ -691,18 +715,19 @@ public class XProcZServlet extends HttpServlet {
 		if (mediaType == null) {
 			return false;
 		}
+		String mediaTypeWithoutParameters = getMediaTypeWithoutParameters(mediaType);
 		return (
-			mediaType.equals("application/xml") ||
-			mediaType.equals("application/xml-external-parsed-entity") ||
-			mediaType.equals("text/xml") ||
-			mediaType.equals("text/xml-external-parsed-entity") ||
+			mediaTypeWithoutParameters.equals("application/xml") ||
+			mediaTypeWithoutParameters.equals("application/xml-external-parsed-entity") ||
+			mediaTypeWithoutParameters.equals("text/xml") ||
+			mediaTypeWithoutParameters.equals("text/xml-external-parsed-entity") ||
 			(
-				mediaType.startsWith("application/") && 
-				mediaType.endsWith("+xml")
+				mediaTypeWithoutParameters.startsWith("application/") && 
+				mediaTypeWithoutParameters.endsWith("+xml")
 			)
 		);
 	}
-	
+
 	/**
 	* Determine whether content is HTML
 	* See <a href="https://tools.ietf.org/html/rfc7303">RFC7303</a>
@@ -710,8 +735,9 @@ public class XProcZServlet extends HttpServlet {
 	private boolean isHTMLMediaType(String mediaType) {
 		if (mediaType == null) {
 			return false;
-		}
-		return mediaType.equals("text/html");
+		}        
+		String mediaTypeWithoutParameters = getMediaTypeWithoutParameters(mediaType);
+		return mediaTypeWithoutParameters.equals("text/html");
 	}			
 	
 	private String getMainPipelineFilename() {
@@ -738,7 +764,35 @@ public class XProcZServlet extends HttpServlet {
 			throw new FileNotFoundException("Pipeline " + file + " not found");
 		}
 	}
-	
+
+
+	// For character encoding of mime multipart parts, see https://datatracker.ietf.org/doc/html/rfc7578#section-4.6
+	private static final Pattern charsetPattern = Pattern.compile("[^;]+;\\s*charset\\s*=\\s*['\"]?([^\\s;]*)['\"]?", Pattern.CASE_INSENSITIVE);
+	private String getCharacterEncodingFromContentType(String contentType) {
+		Matcher matcher = charsetPattern.matcher(contentType);
+		if (matcher.find()) {
+			return matcher.group(1);
+		}
+		return null;
+	}
+	private String getPartStringContent(Part part, String defaultCharacterEncoding) 
+		throws IOException, UnsupportedEncodingException {
+		String partContentType = part.getContentType();
+		String partCharacterEncoding = null;
+		if (partContentType != null) {
+			partCharacterEncoding = getCharacterEncodingFromContentType(partContentType);
+		}
+		String characterEncoding;
+		if (partCharacterEncoding != null) {
+			characterEncoding = partCharacterEncoding;
+		} else {
+			characterEncoding = defaultCharacterEncoding;
+		}
+		InputStream inputStream = part.getInputStream();
+		String stringContent = readText(inputStream, characterEncoding); 		
+		inputStream.close();
+		return stringContent;
+	}	
 	// Read text from the input stream
 	private String readText(InputStream inputStream, String characterEncoding) 
 		throws IOException, UnsupportedEncodingException {
