@@ -349,7 +349,6 @@ public class XProcZServlet extends HttpServlet {
     }
     
     private Document parseXML(InputStream inputStream) throws SAXException, IOException {
-    	 // TODO should a parse failure trigger re-processing as plain text?
     	 Document document = builder.parse(inputStream);
     	 inputStream.close();
     	 return document;
@@ -455,17 +454,24 @@ public class XProcZServlet extends HttpServlet {
 					setNonNullAttribute(body, "id", part.getHeader("Content-ID"));
 					setNonNullAttribute(body, "description", part.getHeader("Content-Description"));
 						
-					// TODO allow badly formed XML content to fall back to being processed as text
+					// allow badly formed XML content to fall back to being processed as text
 					// insert the actual content of the part
 					if (isXMLMediaType(partContentType)) {
-						// parse XML
-						Document uploadedDocument = parseXML(part.getInputStream());
-						// TODO also import top-level comments, processing instructions, etc?
-						body.appendChild(
-							body.getOwnerDocument().adoptNode(
-								uploadedDocument.getDocumentElement()
-							)
-						);
+						try {
+							// parse XML
+							Document uploadedDocument = parseXML(part.getInputStream());
+							// TODO also import top-level comments, processing instructions, etc?
+							body.appendChild(
+								body.getOwnerDocument().adoptNode(
+									uploadedDocument.getDocumentElement()
+								)
+							);
+						} catch (SAXException | IOException e) {
+							String text = getPartStringContent(part, defaultPartCharset);
+							body.appendChild(
+								requestXML.createTextNode(text)
+							);
+						}
 					} else if (isTextMediaType(partContentType)) {
 						// otherwise if text then copy it unparsed
 						// <c:body content-type="text/plain">This &amp; that</c:body>
@@ -495,13 +501,24 @@ public class XProcZServlet extends HttpServlet {
 				if (isXMLMediaType(contentType)) {
 					// if it's XML then parse it and place root element inside
 					// <c:body content-type="application/rdf+xml"><rdf:RDF etc.../></c:body>
-					Document uploadedDocument = parseXML(req.getInputStream());
-					// TODO also import top-level comments, processing instructions, etc?
-					body.appendChild(
-						body.getOwnerDocument().adoptNode(
-							uploadedDocument.getDocumentElement()
-						)
-					);
+					// allow badly formed XML content to fall back to being processed as text
+					try {
+						Document uploadedDocument = parseXML(req.getInputStream());
+						// TODO also import top-level comments, processing instructions, etc?
+						body.appendChild(
+							body.getOwnerDocument().adoptNode(
+								uploadedDocument.getDocumentElement()
+							)
+						);
+					} catch (SAXException | IOException e) {
+						InputStream inputStream = req.getInputStream();
+						body.appendChild(
+							requestXML.createTextNode(
+								readText(inputStream, getCharacterEncoding(req))
+							)
+						);
+						inputStream.close();
+					}
 				} else if (isTextMediaType(contentType)) {
 					// otherwise if text then copy it unparsed
 					// <c:body content-type="text/plain">This &amp; that</c:body>
