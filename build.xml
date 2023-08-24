@@ -68,9 +68,16 @@
 		<unzip src="build/calabash.zip" dest="build/lib">
 			<patternset>
 				<include name="**/*.jar"/>
+				<exclude name="**/javax.servlet-api-3.1.0.jar"/>
 			</patternset>
 			<mapper type="flatten"/>
 		</unzip>
+		<copy todir="build/lib">
+			<fileset dir="lib">
+				<include name="**/*.jar"/>
+				<exclude name="**/servlet-api.jar"/>
+			</fileset>
+		</copy>
 	</target>
 
 	<target name="compile" depends="init">
@@ -87,7 +94,7 @@
 		</javac>
 	</target>	
 	
-	<target name="copy" depends="compile">
+	<target name="copy" depends="compile, update-version-string">
 		<echo>Copying files ...</echo>
 		<copy todir="build/webapp/xproc">
 			<fileset dir="xproc"/>
@@ -101,13 +108,8 @@
 		<copy todir="build/webapp/WEB-INF/lib">
 			<fileset dir="build/lib">
 				<include name="**/*.jar"/>
-				<exclude name="**/servlet-api.jar"/>
+				<exclude name="**/javax.servlet-api-3.1.0.jar"/>
 			</fileset>
-			<!--
-			<fileset dir="../xmlcalabash1">
-				<include name="calabash.jar"/>
-			</fileset>
-			-->
 		</copy>
 	</target>		
 

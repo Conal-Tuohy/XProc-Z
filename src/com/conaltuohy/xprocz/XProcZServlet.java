@@ -307,6 +307,7 @@ public class XProcZServlet extends HttpServlet {
 	
     public void init() throws ServletException {
 	getServletContext().log("XProc-Z initializing ...");
+	getServletContext().log("Main pipeline is " + getMainPipelineFilename());
     	 try {
     	 	 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
     	 	 builder = factory.newDocumentBuilder();
@@ -444,7 +445,8 @@ public class XProcZServlet extends HttpServlet {
 					String partContentType = part.getContentType();
 					// The http client may legitimately not send part headers, but for politeness we
 					// supply the XProc pipeline with an explicit Content-Type, because 
-					// rfc1341 says that absent headers imply "plain US-ASCII text"
+					// rfc1341 says that absent headers imply "plain US-ASCII text" and XProc-Z
+					// will provide a default of "utf-8" which will be correct if the text is US-ASCII.
 					// https://www.w3.org/Protocols/rfc1341/7_2_Multipart.html
 					if (partContentType == null) {
 						partContentType = defaultContentType;
@@ -775,7 +777,6 @@ public class XProcZServlet extends HttpServlet {
 	private Input getPipelineInput(String filename) throws SecurityException, FileNotFoundException {
 		File file = new File(filename);
 		if (file.isFile() && file.canRead()) {
-			getServletContext().log("Loading pipeline from " + file);
 			return new Input(filename);
 		} else {
 			throw new FileNotFoundException("Pipeline " + file + " not found");
