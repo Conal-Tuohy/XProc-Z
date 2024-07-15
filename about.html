@@ -64,7 +64,7 @@ XProc-Z is designed to support those users.</li>
 <li>You can write XProc applications that handle <em>any</em> kind of HTTP request. You can handle not only GET and POST, but also PUT, HEAD, and so on. 
 Your application can have access not only to URI request parameters, but also to cookies, HTTP request headers, multipart content uploads, and so on.</li>
 </ul>
-<h1>Reusing XProc’s <code>request</code> and <code>response</code> documents</h1>
+<h1>XProc-Z's HTTP binding mechanism</h1>
 <p>For maximum flexibility, an XProc-Z application consists of a single XProc pipeline. When XProc-Z receives an HTTP request it passes the request to that
 pipeline, and leaves it up to the pipeline itself to decide how to handle any headers, parameters, and so on. An XProc pipeline that didn’t need to know 
 about the HTTP <code>Accept</code> header, for instance, could just ignore that header, but the header would always be passed to it anyway, just in case.</p>
