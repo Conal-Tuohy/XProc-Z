@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="XProc-Z : A platform for XProc web proxying (and other) applications. ">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>XProc-Z</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/Conal-Tuohy/XProc-Z">View on GitHub</a>
+
+          <h1 id="project_title">XProc-Z</h1>
+          <h2 id="project_tagline">A platform for XProc web proxying (and other) applications. </h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/Conal-Tuohy/XProc-Z/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/Conal-Tuohy/XProc-Z/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h3>
+<a id="xproc-z" class="anchor" href="#xproc-z" aria-hidden="true"><span class="octicon octicon-link"></span></a>XProc-Z</h3>
+<p>XProc-Z is an application framework designed for XML-literate programmers to build web applications of various kinds (web sites, web services, 
+web APIs, web proxies, etc) in the XML-based scripting languages XProc, XSLT, and XQuery.</p>
+<p>XProc-Z itself is written in Java, but building a web application with it requires no knowledge of Java or Java compilation. </p>
+<p>XProc-Z uses the XProc interpreter <a href="http://xmlcalabash.com/">Calabash</a>, by Norm Walsh, to execute pipelines. The XProc-Z framework itself does little except connect Calabash to the HTTP protocol.</p>
+<h3>XProc; a language for data plumbing</h1>
+<p><a href="http://www.w3.org/TR/xproc/">XProc</a> is a language for writing XML pipelines; it uses the idea of data “flowing” from various sources, 
+step by step through a network of pipes and filters, to reach its destination. It’s a language for data plumbing.</p>
+<p>XProc is a language purpose built for XML processing tasks. For instance it takes only a dozen or so lines of code to read a bunch of XML files 
+from a website, transform them with an XSLT, validate them with a schema, and finally save the valid files in one folder and the invalid files in another.</p>
+<h3>Running XProc programs on the Web</h1>
+<p>XProc is not intended primarily for writing web servers, and most XProc programs are not web applications. Most XProc pipelines are run from the 
+command line where they can read <em>from</em> the Web, and write <em>to</em> the Web using the `http-request` feature of the XProc language, but 
+they aren’t themselves actually <em>part of</em> the Web. However, there are some application frameworks which allow you to run your XProc pipelines 
+in the context of a web server, and configure your pipelines to receive HTTP requests and make HTTP responses. One example is the "Pipe Rack" framework 
+offered by Calabash itself. </>
+<p>XProc-Z is different from other XProc web frameworks in the details of the mechanisms by which an HTTP request is passed to your pipeline, and in 
+which your pipeline outputs its response. For instance, if a browser makes an HTTP “POST” request for a resource with a particular URI, and passes 
+it a bunch of parameters encoded in the “application/x-www-form-urlencoded” format, somehow that request has to invoke a particular pipeline, and pass 
+those parameters to it. Generally, XProc-Z web frameworks have their own framework for this; some of them were quite restrictive; a URI directly 
+identifies a pipeline, and any URI parameters were passed to the pipeline as pipeline parameters; others were more flexible; allow you to tweak it so 
+that various properties of a request, taken together, identified which pipeline to run; you could pass not just form parameters, but other things, 
+such as HTTP request headers, to the pipeline, and so on. Generally, to customize the way the HTTP request was handled you have to write some Java code, 
+or write some custom XML configuration file. XProc-Z is less "opinionated" about how a pipeline responds to a request; it leaves the details up to
+the pipeline itself. This provides the following advantages:</p>
+<ul>
+<li>You can write an application entirely in the XProc language, without any Java coding or compilation. In the library world, 
+and in the Digital Humanities community, there are a <em>lot</em> of people who know XML, and know XSLT, and for whom XProc could be a really easy next step.
+XProc-Z is designed to support those users.</li>
+<li>You can write XProc applications that handle <em>any</em> kind of HTTP request. You can handle not only GET and POST, but also PUT, HEAD, and so on. 
+Your application can have access not only to URI request parameters, but also to cookies, HTTP request headers, multipart content uploads, and so on.</li>
+</ul>
+<h1>Reusing XProc’s <code>request</code> and <code>response</code> documents</h1>
+<p>For maximum flexibility, an XProc-Z application consists of a single XProc pipeline. When XProc-Z receives an HTTP request it passes the request to that
+pipeline, and leaves it up to the pipeline itself to decide how to handle any headers, parameters, and so on. An XProc pipeline that didn’t need to know 
+about the HTTP <code>Accept</code> header, for instance, could just ignore that header, but the header would always be passed to it anyway, just in case.</p>
+<p>To pass the request to the pipeline, and to retrieve the response, XProc-Z reuses a mechanism already present in the XProc language, which just had to 
+be turned inside out. XProc has a step called <a href="http://www.w3.org/TR/xproc/#c.http-request"><code>http-request</code></a>, and associated 
+<a href="http://www.w3.org/TR/xproc/#cv.request"><code>request</code></a> and <a href="http://www.w3.org/TR/xproc/#c.response"><code>response</code></a> XML 
+document types. In XProc, an HTTP request is made by creating a <code>request</code> document containing the details of the request, and piping the document 
+into an <code>http-request</code> step, which actually makes the HTTP request, and in turn outputs a <code>response</code> document. By following this pattern, 
+XProc-Z makes use of the existing definitions of <code>request</code> and <code>response</code>, and does not have to add any extraneous or “foreign” mechanisms. 
+In XProc-Z’s binding mechanism, an HTTP request received from a web user agent is converted into a <code>request</code> object and passed into the XProc-Z 
+pipeline. The output of the pipeline is expected to be a <code>response</code> document, which XProc-Z converts into an actual HTTP response to the web user agent. 
+In other words, an XProc-Z pipeline has the same signature as the standard XProc <code>http-request</code> step, which makes a lot of sense if you think about it.</p>
+<p>This means that an XProc-Z server can make do with a single pipeline which handles any request. The pipeline can parse the request in an arbitrary way; 
+using cookies, parsing URI parameters and HTTP headers, accepting PUT and POST requests, and returning arbitrary HTTP response codes and headers. The business 
+of “routing” request URIs and parsing parameters is all left up to the XProc pipeline itself. So the binding mechanism is very simple and leaves maximum 
+flexibility to the pipeline, which can then be used to implement any kind of HTTP based protocol.</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">XProc-Z maintained by <a href="https://github.com/Conal-Tuohy">Conal-Tuohy</a></p>
+      </footer>
+    </div>
+
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-49188320-2");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+
+  </body>
+</html>
