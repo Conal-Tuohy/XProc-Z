@@ -3,4 +3,5 @@ XProc-Z
 
 A Java Servlet platform for XProc web proxying (and other) applications
 
-See blog post at http://conaltuohy.com/blog/xproc-z/ for overview.
+See [XProc-Z project website](https://conal-tuohy.github.io/XProc-Z/) for details
+
