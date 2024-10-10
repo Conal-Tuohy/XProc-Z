@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+This is the Tomcat context file which installs XProc-Z as the ROOT servlet.
+To specify additional parameters, or set a different main pipeline, override this "ROOT" context file 
+by mounting a replacement file, e.g. using docker run: 
+docker run -p 8080:8080 -v /path/to/custom-context.xml:/usr/local/tomcat/conf/Catalina/localhost/ROOT.xml xproc-z
+To provide a different pipeline, and to provide supporting data, XSLT, etc, you can mount another 
+directory to replace the /var/lib/xproc-z/ folder in the container. e.g.
+docker run -p 8080:8080 -v /path/to/my-xproc-and-related-data:/var/lib/xproc-z xproc-z
+-->
+<Context docBase="/usr/local/xproc-z.war">
+    `<!-- configure XProc-Z's to use a main pipeline which returns a "welcome page" for Dockerized XProc-Z -->
+	<Parameter name="xproc-z.main" value="/var/lib/xproc-z/xproc/xproc-z.xpl" override="false"/>
+    <!-- You can add context parameters here if needed -->
+    <!-- <Parameter name="exampleParam" value="exampleValue" override="false"/> -->
+</Context>
+
