@@ -4,8 +4,20 @@ FROM tomcat:9.0
 # Remove the default webapps
 RUN rm -rf /usr/local/tomcat/webapps/*
 
-# Copy the WAR file to the location referred to in the ROOT context file
-COPY dist/xproc-z.war /usr/local/xproc-z.war
+# Mount the XProc-Z codebase into the location "/source" in the image-building container,
+# install the Ant build tool and use it to build the XProc-Z web app (war) file, 
+# copy the web application to /usr/local/xproc-z.war as specified in Tomcat's 'ROOT.xml' file,
+# then clean up by uninstalling Ant and clearing the apt package cache.
+WORKDIR /source
+RUN \
+    --mount=type=bind,target=/source,readwrite \
+	apt-get update &&  \
+	apt-get install ant -y && \
+	ant && \
+    cp /source/dist/xproc-z.war /usr/local/xproc-z.war && \
+	apt-get remove ant -y && \
+	rm -rf /var/lib/apt/lists/*
+WORKDIR /
 
 # Copy the Tomcat context file
 COPY docker/ROOT.xml /usr/local/tomcat/conf/Catalina/localhost/
