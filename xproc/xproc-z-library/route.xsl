@@ -8,6 +8,10 @@
 		<!-- check if the @href URI matches the $uri-template -->
 
 		<!-- convert the URI template into a regex and use it to parse the URI -->
+		
+		<!-- TODO further develop the URI template processing so that it handles the full URI template syntax, including lists, e.g. 
+		"{/segment*}" should match "/one/two/three" and produce an array <fn:array name="segment"><fn:string>one</fn:string><fn:string>two</fn:string><fn:string>three</fn:string></fn:array>
+		-->
 		<xsl:variable name="bracketed-expression-regex">\{[^}]+\}</xsl:variable>
 		<xsl:variable name="tokenized-template" select="analyze-string($uri-template, $bracketed-expression-regex)/*"/>
 		<xsl:variable name="uri-regex" select="
